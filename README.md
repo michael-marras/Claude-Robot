@@ -13,9 +13,10 @@ processed data for claude to direct outputs of the robot
   - MAX98357A
     - mini 4-8 ohm Speaker
   - servo motor
+  - 0.96" SSD1306 I2C OLED
 - body
   - ESP32-DevKitC-32 Development Board
-  - 4 hobby motors
+  - 8x MG90S all-metal micro servos
   
 ### Technologies Used
 - Ultralytics Yolov11 image classifier
