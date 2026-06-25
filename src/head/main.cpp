@@ -1,12 +1,14 @@
-#include <Arduino.h>
+#include "Head.hpp"
+#include <WiFi.h>
+
+constexpr uint16_t BAUD = 9600;
+
+Head head;
 
 void setup() {
-	pinMode(LED_BUILTIN, OUTPUT);
+	Serial.begin(BAUD);
+	head.init();
 }
 
 void loop() {
-	digitalWrite(LED_BUILTIN, HIGH);
-	delay(1000);
-	digitalWrite(LED_BUILTIN, LOW);
-	delay(1000);
-}
+}	
