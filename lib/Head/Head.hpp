@@ -1,6 +1,8 @@
 #pragma once
 #include <esp_camera.h>
 #include <ESP_I2S.h>
+#include <Arduino.h>
+#include "camera_pins.h"
 
 class Head {
     public:

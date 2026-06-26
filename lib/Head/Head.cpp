@@ -1,6 +1,4 @@
 #include "Head.hpp"
-#include "camera_pins.h"
-#include <Arduino.h>
 
 constexpr uint16_t SIXTEEN_KHZ      = 16000;
 constexpr uint8_t  PDM_MIC_DATA_PIN = 41;
