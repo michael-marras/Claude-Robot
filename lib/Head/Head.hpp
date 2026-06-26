@@ -1,5 +1,6 @@
-#pragma
-#include "esp_camera.h"
+#pragma once
+#include <esp_camera.h>
+#include <ESP_I2S.h>
 
 class Head {
     public:
@@ -9,34 +10,40 @@ class Head {
         void init();
 
         /** 
-         * @brief Capture 1 video frame and record wav file
+         * @brief Print a camera frame and an audio sample in the Serial monitor
          */
-        void captureData();
+        void printData();
 
     private:
+        I2SClass i2S_; 
+
         /** 
-        * @brief Initialize the OV3360 camera
+        * @brief Initialize the OV3360 camera using ESP_Camera
         * 
-        * @return ESP_OK if successfull
+        * @param Struct containing config for the camera
         */
-        esp_err_t initCamera(camera_config_t* cameraConfig);
+        void initCamera(camera_config_t* cameraConfig);
+
+        /** 
+         * @brief Initialize the mircrophone using ESP_I2S api
+         */
+        void initMicrophone();
 
         /**
          * @brief Initialize the config for the camera
          * 
          * @returns The config for the camera to be initialized with
          */
-        camera_config_t* initCameraConfig();
+        constexpr camera_config_t initCameraConfig();
 
         /**
-         * @brief captures 1 frame from the camera
+         * @brief Print audio sample
          */
-        void captureFrame();
+        void printSample();
 
         /**
-         * 
+         * @brief Print camera frame
          */
-        void captureAudio();
-
+        void printFrame();
 
 };
