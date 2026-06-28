@@ -5,17 +5,81 @@ constexpr uint8_t  PDM_MIC_DATA_PIN = 41;
 constexpr uint8_t  PDM_MIC_CLK_PIN  = 42;
 constexpr uint32_t TWENTY_MHZ       = 20000000;
 
+constexpr const char* MESSAGE_INIT_SUCCESS = "Head Initialized Successfully";
+constexpr const char* MESSAGE_INIT         = "Head Initializing";
+constexpr const char* MESSAGE_UNINIT_ERROR  = "Head not Initialized";
+
 void Head::init() {
-	Serial.println("Head Initializing!");
+	Serial.println(MESSAGE_INIT);
     camera_config_t cameraConfig = this -> initCameraConfig();
     this -> initCamera(&cameraConfig);
 	this -> initMicrophone();
-	Serial.println("Head Initialized Successfully!");
+	Serial.println(MESSAGE_INIT_SUCCESS);
+	this -> headInitialized_ = true;
 }
 
-void Head::printData() {
-	this -> printSample();
-	this -> printFrame();
+void Head::startTasks() {
+	xTaskCreatePinnedToCore(
+		microphoneTaskEntry, 
+		"capturing, processing, and sending audio",
+		4096,
+		this,
+		4,
+		nullptr,
+		1
+	);
+
+	// xTaskCreatePinnedToCore(
+	// 	receiveCommandsTaskEntry, 
+	// 	"receiving commands from companion code",
+	// 	4096,
+	// 	this,
+	// 	3,
+	// 	nullptr,
+	// 	1
+	// );
+
+	xTaskCreatePinnedToCore(
+		cameraTaskEntry, 
+		"capturing, processing, and sending images",
+		8192,
+		this,
+		2,
+		nullptr,
+		1
+	);
+}
+
+void Head::printSample(int16_t sample) {
+	if (sample && sample != -1 && sample != 1) {
+		Serial.println(sample);
+	}
+}
+
+void Head::printFrame(camera_fb_t* frameBuffer) {
+	Serial.write(frameBuffer -> buf, frameBuffer -> len);
+}
+
+camera_fb_t* Head::getFrameBuffer() {
+	if (!this -> headInitialized_) {
+		Serial.println(MESSAGE_UNINIT_ERROR);
+		return nullptr; 
+	}
+
+	return esp_camera_fb_get();
+}
+
+int16_t Head::getAudioSample() {
+	return i2S_.read();
+}
+
+void Head::returnFrameBuffer(camera_fb_t* frameBuffer) {
+	if (!this -> headInitialized_) {
+		Serial.println(MESSAGE_UNINIT_ERROR);
+		return; 
+	}
+
+	esp_camera_fb_return(frameBuffer);
 }
 
 void Head::initCamera(camera_config_t* cameraConfig) {
@@ -83,24 +147,30 @@ constexpr camera_config_t Head::initCameraConfig() {
     return config;
 }
 
-void Head::printSample() {
-	int16_t sample = this -> i2S_.read();
+void Head::cameraTaskEntry(void* pvParameters) {
+	static_cast<Head*>(pvParameters) -> cameraTask(); 
+}
 
-	if (sample && sample != -1 && sample != 1) {
-		Serial.println(sample);
+void Head::microphoneTaskEntry(void* pvParameters) {
+	static_cast<Head*>(pvParameters) -> microphoneTask(); 
+}
+
+void Head::cameraTask() {
+	while(1) {
+		int16_t sample = this -> getAudioSample();
+		this -> printSample(sample);
 	}
 }
 
-void Head::printFrame() {
-	camera_fb_t* frameBuffer = esp_camera_fb_get();
-
-	if (!frameBuffer) {
-		Serial.println("Failed to get camera frame buffer");
-		return;
+void Head::microphoneTask() {
+	while(1) {
+		camera_fb_t* fb = this -> getFrameBuffer();
+		this -> printFrame(fb);
+		this -> returnFrameBuffer(fb);
 	}
-
-	Serial.write(frameBuffer -> buf, frameBuffer -> len);
-	esp_camera_fb_return(frameBuffer);
 }
 
+void Head::receiveCommandsTask() {
+
+}
 
