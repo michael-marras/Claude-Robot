@@ -47,7 +47,7 @@ processed data for claude to direct outputs of the robot
 
 ### Compile and flash the code
 ```bash
-pio run -e uno -t upload
+pio run -e <env_name> -t upload
 ```
 
 ### Run tests

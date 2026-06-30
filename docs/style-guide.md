@@ -53,21 +53,23 @@ inline comments explain *why* a tricky line exists.
 
 ### Example
 
-​```cpp
+```cpp
 /**
  * @brief Moves a single leg servo to a target angle.
  *
- * @param legId   Index of the leg (0–3).
+ * @param legId   Index of the leg (0-3).
  * @param jointId Joint within the leg (0 = hip, 1 = knee).
  * @param angle   Target angle in degrees, clamped to the joint's range.
  * @return true if accepted, false if legId/jointId out of range.
  */
 bool setLegAngle(uint8_t legId, uint8_t jointId, uint8_t angle);
-​```
+```
 
 Enforced in the `Doxyfile`: `EXTRACT_PRIVATE = YES`, `EXTRACT_STATIC = YES`,
 `WARN_IF_UNDOCUMENTED = YES` (keep `EXTRACT_ALL = NO`, or the undocumented
 warnings get suppressed).
+
+---
 
 ## Safety — memory
 
@@ -82,9 +84,9 @@ Embedded RAM is tiny and there's no OS to bail us out, so a few habits matter:
 ---
 
 ## Safety — servos
- 
-The body is a quadruped: 8 servos driven through a PCA9685 PWM board over I2C. That setup has its own footguns, mostly around power and not blocking the control loop:
- 
+
+The body is a quadruped: 8 servos driven directly from the WROOM's LEDC peripheral. That setup has its own footguns, mostly around power and not blocking the control loop:
+
 - **Don't block the loop with `delay()` for servo motion.** A leg that needs to move over 300 ms shouldn't freeze the whole robot with `delay(300)` — nothing else (IMU, UART) runs during that pause. Track timing with `millis()` and step the servo target each loop instead.
 - **Move servos gradually, not in jumps.** Commanding a servo straight from 0° to 180° makes it slam and spike current. Step toward the target a few degrees per loop for smoother motion and a gentler power draw — important when 8 are moving at once.
 - **Clamp every angle to a safe range** before sending it. A leg servo driven past its mechanical limit will grind, stall, and overheat. Keep min/max constants per joint and never write outside them: `angle = constrain(angle, MIN_HIP, MAX_HIP);`
@@ -97,7 +99,7 @@ The body is a quadruped: 8 servos driven through a PCA9685 PWM board over I2C. T
 - Tests live under `test/`, named `test_<unit>` (PlatformIO convention).
 - Pure logic — gait math, `clampServoAngle`, protocol struct parsing —
   should be unit-tested and run on the `native` environment, no board needed.
-- Hardware-coupled code (PCA9685, encoders, IMU) is hard to test directly.
+- Hardware-coupled code (servos, encoders, IMU) is hard to test directly.
   Keep the logic separate from the I/O call so the logic half stays testable.
 - Add or update a test when you change a unit's behavior; keep `main` green.
 
@@ -108,7 +110,7 @@ The body is a quadruped: 8 servos driven through a PCA9685 PWM board over I2C. T
 - Small, focused commits with a present-tense summary line: "Add encoder ISR debouncing", not "stuff".
 - Don't commit `.pio/` or `.vscode/` (they're in `.gitignore`).
 - Pull before you push; keep `main` buildable.
-- Don't make massive pull requests
+- Don't make massive pull requests.
 
 ---
 
