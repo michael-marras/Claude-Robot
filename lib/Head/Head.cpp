@@ -1,4 +1,5 @@
 #include "Head.hpp"
+#include "../../include/secrets.h"
 
 constexpr uint16_t SIXTEEN_KHZ       = 16000;
 constexpr uint8_t  PDM_MIC_DATA_PIN  = 41;
@@ -18,8 +19,6 @@ constexpr const char* MESSAGE_INIT         = "Head Initializing";
 constexpr const char* MESSAGE_UNINIT_ERROR = "Head not Initialized";
 constexpr const char* MESSAGE_CAMERA_INIT_ERROR = "Camera failed to initialize";
 constexpr const char* MESSAGE_I2S_INIT_ERROR    = "Failed to initialize I2S!";
-
-IPAddress IP_ADDRESS(IP_ADDRESS); 
 
 void Head::init() {
 	Serial.println(MESSAGE_INIT);
@@ -91,7 +90,7 @@ void Head::returnFrameBuffer(camera_fb_t* frameBuffer) {
 }
 
 void Head::sendAudio(size_t size) {
-	udp_.beginPacket(IP_ADDRESS, PORT);
+	udp_.beginPacket(IPAddress(IP_ADDRESS), PORT);
 	udp_.write(reinterpret_cast<const uint8_t*>(audioBuffer_), size); // conversion could be wrong if buffer type changed
 	udp_.endPacket();
 }
