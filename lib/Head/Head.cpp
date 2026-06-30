@@ -1,52 +1,67 @@
 #include "Head.hpp"
 
-constexpr uint16_t SIXTEEN_KHZ      = 16000;
-constexpr uint8_t  PDM_MIC_DATA_PIN = 41;
-constexpr uint8_t  PDM_MIC_CLK_PIN  = 42;
-constexpr uint32_t TWENTY_MHZ       = 20000000;
+constexpr uint16_t SIXTEEN_KHZ       = 16000;
+constexpr uint8_t  PDM_MIC_DATA_PIN  = 41;
+constexpr uint8_t  PDM_MIC_CLK_PIN   = 42;
+constexpr uint32_t TWENTY_MHZ        = 20000000;
+constexpr uint16_t PORT              = 9999;
+constexpr uint8_t  CPU_CORE          = 1;
+constexpr uint8_t  MIC_TASK_PRIORITY = 4;
+constexpr uint8_t  CAM_TASK_PRIORITY = 2;
+constexpr uint8_t  RCV_TASK_PRIORITY = 3;
+constexpr uint32_t MIC_TASK_STACK_BYTES = 4096;
+constexpr uint32_t RCV_TASK_STACK_BYTES = 4096;
+constexpr uint32_t CAM_TASK_STACK_BYTES = 8192;
 
 constexpr const char* MESSAGE_INIT_SUCCESS = "Head Initialized Successfully";
 constexpr const char* MESSAGE_INIT         = "Head Initializing";
-constexpr const char* MESSAGE_UNINIT_ERROR  = "Head not Initialized";
+constexpr const char* MESSAGE_UNINIT_ERROR = "Head not Initialized";
+constexpr const char* MESSAGE_CAMERA_INIT_ERROR = "Camera failed to initialize";
+constexpr const char* MESSAGE_I2S_INIT_ERROR    = "Failed to initialize I2S!";
+
+IPAddress IP_ADDRESS(IP_ADDRESS); 
 
 void Head::init() {
 	Serial.println(MESSAGE_INIT);
     camera_config_t cameraConfig = this -> initCameraConfig();
     this -> initCamera(&cameraConfig);
 	this -> initMicrophone();
+	udp_.begin(PORT);
 	Serial.println(MESSAGE_INIT_SUCCESS);
-	this -> headInitialized_ = true;
+	headInitialized_ = true;
 }
 
 void Head::startTasks() {
+	this -> checkInitialized();
+
 	xTaskCreatePinnedToCore(
 		microphoneTaskEntry, 
 		"capturing, processing, and sending audio",
-		4096,
+		MIC_TASK_STACK_BYTES,
 		this,
-		4,
+		MIC_TASK_PRIORITY,
 		nullptr,
-		1
+		CPU_CORE
 	);
 
 	// xTaskCreatePinnedToCore(
 	// 	receiveCommandsTaskEntry, 
 	// 	"receiving commands from companion code",
-	// 	4096,
+	// 	RCV_TASK_STACK_BYTES,
 	// 	this,
-	// 	3,
+	// 	RCV_TASK_PRIORITY,
 	// 	nullptr,
-	// 	1
+	// 	CPU_CORE
 	// );
 
 	xTaskCreatePinnedToCore(
 		cameraTaskEntry, 
 		"capturing, processing, and sending images",
-		8192,
+		CAM_TASK_STACK_BYTES,
 		this,
-		2,
+		CAM_TASK_PRIORITY,
 		nullptr,
-		1
+		CPU_CORE
 	);
 }
 
@@ -61,31 +76,41 @@ void Head::printFrame(camera_fb_t* frameBuffer) {
 }
 
 camera_fb_t* Head::getFrameBuffer() {
-	if (!this -> headInitialized_) {
-		Serial.println(MESSAGE_UNINIT_ERROR);
-		return nullptr; 
-	}
-
+	this -> checkInitialized();
 	return esp_camera_fb_get();
 }
 
-int16_t Head::getAudioSample() {
-	return i2S_.read();
+void Head::updateAudioBuffer(size_t size) {
+	this -> checkInitialized();
+	i2S_.readBytes(audioBuffer_, size);
 }
 
 void Head::returnFrameBuffer(camera_fb_t* frameBuffer) {
-	if (!this -> headInitialized_) {
-		Serial.println(MESSAGE_UNINIT_ERROR);
-		return; 
-	}
-
+	this -> checkInitialized();
 	esp_camera_fb_return(frameBuffer);
+}
+
+void Head::sendAudio(size_t size) {
+	udp_.beginPacket(IP_ADDRESS, PORT);
+	udp_.write(reinterpret_cast<const uint8_t*>(audioBuffer_), size); // conversion could be wrong if buffer type changed
+	udp_.endPacket();
+}
+
+void Head::sendVideo(size_t size) {
+	// TODO
+}
+
+void Head::checkInitialized() {
+	if (!headInitialized_) {
+		Serial.println(MESSAGE_UNINIT_ERROR);
+		while(1);
+	}
 }
 
 void Head::initCamera(camera_config_t* cameraConfig) {
 	esp_err_t err = esp_camera_init(cameraConfig);
 	if(err != ESP_OK) {
-		Serial.println("Camera failed to initialize");
+		Serial.println(MESSAGE_CAMERA_INIT_ERROR);
         while(1);
 	}
 
@@ -94,15 +119,15 @@ void Head::initCamera(camera_config_t* cameraConfig) {
 }
 
 void Head::initMicrophone() {
-	this -> i2S_.setPinsPdmRx(PDM_MIC_CLK_PIN, PDM_MIC_DATA_PIN);
+	i2S_.setPinsPdmRx(PDM_MIC_CLK_PIN, PDM_MIC_DATA_PIN);
 
-	if(!this -> i2S_.begin(I2S_MODE_PDM_RX, SIXTEEN_KHZ, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO)) {
-		Serial.println("Failed to initialize I2S!");
+	if(!i2S_.begin(I2S_MODE_PDM_RX, SIXTEEN_KHZ, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO)) {
+		Serial.println(MESSAGE_I2S_INIT_ERROR);
 		while(1);
 	}
 }
 
-constexpr camera_config_t Head::initCameraConfig() {
+camera_config_t Head::initCameraConfig() {
     camera_config_t config = {};
 
     // --- Clock (drives the sensor) ---
@@ -155,22 +180,25 @@ void Head::microphoneTaskEntry(void* pvParameters) {
 	static_cast<Head*>(pvParameters) -> microphoneTask(); 
 }
 
+void Head::receiveCommandsTaskEntry(void* pvParameters) {
+	static_cast<Head*>(pvParameters) -> microphoneTask(); 
+}
+
 void Head::cameraTask() {
 	while(1) {
-		int16_t sample = this -> getAudioSample();
-		this -> printSample(sample);
+		// TODO
 	}
 }
 
 void Head::microphoneTask() {
+	constexpr size_t bufferSize = sizeof(audioBuffer_);
 	while(1) {
-		camera_fb_t* fb = this -> getFrameBuffer();
-		this -> printFrame(fb);
-		this -> returnFrameBuffer(fb);
+		this -> updateAudioBuffer(bufferSize);
+		this -> sendAudio(bufferSize);
 	}
 }
 
 void Head::receiveCommandsTask() {
-
+	// TODO
 }
 
