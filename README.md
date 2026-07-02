@@ -52,13 +52,22 @@ pio run -e <env_name> -t upload
 
 ### Run tests
 ```bash
-pio test -e native
+pio test -e test_native
 ```
 - Runs the unit suite on your machine — no board required.
 
 ```bash
-pio test -e native
+pio test -e head
 ```
-- Runs the unite suite through the arduino board
+- Runs the unite suite through the seeed xiao esp32 s3 
 
-## Usage
+```bash
+pio test -e body
+```
+- Runs the unite suite through the wroom esp32 devkit-c
+
+### Test output files
+```bash
+ffplay <relative-path-to-mjpeg-file>
+```
+

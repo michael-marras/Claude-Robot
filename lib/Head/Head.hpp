@@ -60,7 +60,7 @@ class Head {
          * 
          * @param size Number of bytes held in buffer
          */
-        void sendVideo(size_t size);
+        void sendVideo(camera_fb_t* frameBuffer);
 
         /**
          * @brief If head is not initialized then a message saying so is printed to the serial monitor and then the progam halts

@@ -26,6 +26,7 @@ void Head::init() {
     this -> initCamera(&cameraConfig);
 	this -> initMicrophone();
 	udp_.begin(PORT);
+	tcp_.connect(IPAddress(IP_ADDRESS), PORT);
 	Serial.println(MESSAGE_INIT_SUCCESS);
 	headInitialized_ = true;
 }
@@ -91,12 +92,16 @@ void Head::returnFrameBuffer(camera_fb_t* frameBuffer) {
 
 void Head::sendAudio(size_t size) {
 	udp_.beginPacket(IPAddress(IP_ADDRESS), PORT);
-	udp_.write(reinterpret_cast<const uint8_t*>(audioBuffer_), size); // conversion could be wrong if buffer type changed
+	udp_.write(reinterpret_cast<const uint8_t*>(audioBuffer_), size);
 	udp_.endPacket();
 }
 
-void Head::sendVideo(size_t size) {
-	// TODO
+void Head::sendVideo(camera_fb_t* frameBuffer) {
+	if(tcp_.write(frameBuffer -> buf, frameBuffer -> len) < frameBuffer -> len) {
+		Serial.println("frame truncated");
+		tcp_.stop();
+		return;
+	}
 }
 
 void Head::checkInitialized() {
@@ -185,7 +190,13 @@ void Head::receiveCommandsTaskEntry(void* pvParameters) {
 
 void Head::cameraTask() {
 	while(1) {
-		// TODO
+		if (!tcp_.connected()) {
+			tcp_.connect(IPAddress(IP_ADDRESS), PORT);
+		}
+
+		camera_fb_t* frameBuffer = this -> getFrameBuffer();
+		this -> sendVideo(frameBuffer);
+		this -> returnFrameBuffer(frameBuffer);
 	}
 }
 
