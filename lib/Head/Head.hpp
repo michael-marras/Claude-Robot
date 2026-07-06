@@ -10,9 +10,53 @@ static constexpr size_t AUDIO_SAMPLES = 512;
 class Head {
     public:
         /**
-         * @brief Initialize the camera and microphone
+         * @brief Initialize the camera, microphone, and tcp/udp connections
+         * 
+         * @return true on success
          */
-        void init();
+        bool init();
+
+        /**
+         * @brief deinitialize the camera, microphone, and tcp/udp connections
+         * 
+         * @return true on success
+         */
+        bool deinit();
+
+        /** 
+        * @brief Initialize the OV3360 camera using ESP_Camera
+        * 
+        * @param Struct containing config for the camera
+        * @return true on success
+        */
+        bool initCamera(camera_config_t* cameraConfig);
+
+        /** 
+        * @brief Dinitialize the camera
+        * 
+        * @return true on success
+        */
+        bool deinitCamera();
+
+        /** 
+        * @brief Initialize the mircrophone
+        * 
+        * @return true on success
+        */
+        bool initMicrophone();
+
+        /**
+         * @brief Deinitialize the microphone
+         * 
+         * @return true on success
+         */
+        bool deinitMicrophone();
+         /**
+         * @brief Initialize the config for the camera
+         * 
+         * @returns The config for the camera to be initialized with
+         */
+        camera_config_t initCameraConfig();
 
         /**
          * @brief Start cameraTask, microphoneTask, and receiveCommandsTask for the scheduler
@@ -45,8 +89,10 @@ class Head {
 
         /**
          * @brief Returns the Framebuffer pointer back to the camera to be used again
+         * 
+         * @return true on success
          */
-        void returnFrameBuffer(camera_fb_t* frameBuffer);
+        bool returnFrameBuffer(camera_fb_t* frameBuffer);
 
         /**
          * @brief Sends the audio buffer as a packet to the local server over udp
@@ -74,25 +120,6 @@ class Head {
         I2SClass      i2S_; 
         NetworkUDP    udp_;
         NetworkClient tcp_;
-        
-        /** 
-        * @brief Initialize the OV3360 camera using ESP_Camera
-        * 
-        * @param Struct containing config for the camera
-        */
-        void initCamera(camera_config_t* cameraConfig);
-
-        /** 
-         * @brief Initialize the mircrophone using ESP_I2S api
-         */
-        void initMicrophone();
-
-        /**
-         * @brief Initialize the config for the camera
-         * 
-         * @returns The config for the camera to be initialized with
-         */
-        camera_config_t initCameraConfig();
 
         /**
          * @brief Entry point for camera task

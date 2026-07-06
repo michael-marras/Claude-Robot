@@ -1,4 +1,3 @@
-from pywhispercpp import Model
 import socket
 import wave
 import threading

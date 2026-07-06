@@ -18,13 +18,15 @@ void initializeWireless() {
 }
 
 void setup() {
-	Serial.begin(BAUD);
 	delay(FIVE_SECONDS);
+	Serial.begin(BAUD);
+	
 	initializeWireless();
-	head.init();
-	head.startTasks();
+
+	if(head.init()) {
+		head.startTasks();
+	}
 }
 
-void loop() {
-}
+void loop() {}
 
