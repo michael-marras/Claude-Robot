@@ -5,7 +5,7 @@ constexpr uint16_t SIXTEEN_KHZ      = 16000;
 constexpr uint8_t  PDM_MIC_DATA_PIN = 41;
 constexpr uint8_t  PDM_MIC_CLK_PIN  = 42;
 constexpr uint32_t TWENTY_MHZ       = 20000000;
-constexpr uint16_t PORT             = 9999;
+constexpr uint16_t PORT             = 9998;
 constexpr uint8_t  CPU_CORE         = 1;
 
 constexpr uint8_t  MIC_TASK_PRIORITY = 4;
