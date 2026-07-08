@@ -45,20 +45,48 @@ processed data for claude to direct outputs of the robot
 - [PlatformIO Core](https://platformio.org/install/cli) (CLI) or the PlatformIO VS Code extension
     - **Github CI and native tests will not work with only PlatformIo Core**
 
+### Connect esp32 boards to computer
+- When initially connecting either esp32 boards via usb to your computer, you might find that flashing will fail or your device isn't detected. In that case you want to do the following
+
+1. Unplug usb cable from computer
+2. Hold boot button on s3
+3. While holding boot button, reinsert usb and hold for 2 mississippi
+4. Release boot button
+5. If these steps don't work initially, retry from step 1
+
 ### Compile and flash the code
 ```bash
-pio run -e uno -t upload
+pio run -e <env_name> -t upload
 ```
 
 ### Run tests
-```bash
-pio test -e native
-```
-- Runs the unit suite on your machine — no board required.
+## Running tests on the seeed xiao esp32 s3 sense
 
+- Unit tests on the S3 are bugged so you gotta follow this weird workaround to run tests on the board
+1. Build and flash
 ```bash
-pio test -e native
+pio test -e test_head --without-testing
 ```
-- Runs the unite suite through the arduino board
 
-## Usage
+2. Run this command, and it should stall out
+```bash
+pio device monitor -e test_head --rts 1 --dtr 1
+```
+
+3. Click the reset button on S3
+
+4. Should give stalled output, but in the output you'll find test results
+```bash
+test/test_head_head/test_head_head.cpp:21:test_camera_init_valid:PASS
+test/test_head_head/test_head_head.cpp:22:test_init_valid:PASS
+-----------------------
+2 Tests 0 Failures 0 Ignored 
+OK
+```
+
+### Test output files
+- the s3 will deliver audio and video data to the server and may write to files in /out
+```bash
+ffplay <relative-path-to-mjpeg-file>
+```
+
