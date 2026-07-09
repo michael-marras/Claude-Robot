@@ -3,7 +3,6 @@ import wave
 import threading
 import shutil
 import numpy as np 
-import queue
 
 from vosk import Model, KaldiRecognizer
 
@@ -44,23 +43,16 @@ def initVideoServer():
     
     return client, mjpegFile
 
-def conditionAudio(audio):
-    numpy_array = np.frombuffer(audio, dtype = np.int16)
-    array_normalized = numpy_array.astype(np.float32) / 32768.0
-
-    return array_normalized
-
-def transcribe(model, queue):
+    
+def transcribe(rec, data):
+    if (rec.AcceptWaveform(data)):
+        print(rec.Result())
+        
+def runAudioServer(socketUDP, wavFile, textFile, audioQ, model):
     rec = KaldiRecognizer(model, WAV_FRAME_RATE_HZ)
     while True:
-        if (rec.AcceptWaveform(queue.get())):
-            print(rec.Result())
-        
-
-def runAudioServer(socketUDP, wavFile, textFile, audioQ):
-    while True:
         data, addr = socketUDP.recvfrom(512)
-        audioQ.put(data)
+        transcribe(rec, data)
             
 def runVideoServer(socketTCP, file):
     while True:
@@ -68,19 +60,18 @@ def runVideoServer(socketTCP, file):
         file.write(videoData)
 
 # Entry Point
-audioQ = queue.Queue()
 
 print("Server Initializing")
 
 socketUDP, wavFile, textFile = initAudioServer()
 socketTCP, mjpegFile = initVideoServer()
 
-model = Model(lang="en-us")
+model = Model(model_name = "vosk-model-en-us-0.42-gigaspeech")
 
-thread1 = threading.Thread(target=runAudioServer, args = (socketUDP, wavFile, textFile, audioQ))
+thread1 = threading.Thread(target=runAudioServer, args = (socketUDP, wavFile, textFile, audioQ, model))
 thread2 = threading.Thread(target=runVideoServer, args = (socketTCP, mjpegFile))
-thread3 = threading.Thread(target=transcribe, args= (model, audioQ))
+# thread3 = threading.Thread(target=transcribe, args= (model, audioQ))
 
 thread1.start()
 thread2.start()
-thread3.start()
+# thread3.start()
