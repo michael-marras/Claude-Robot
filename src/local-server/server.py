@@ -5,7 +5,7 @@ import shutil
 import numpy as np 
 import queue
 
-from pywhispercpp.model import Model
+from vosk import Model, KaldiRecognizer
 
 PORT               = 9997
 HEADER             = 64
@@ -17,7 +17,6 @@ NUM_CHANNELS       = 1
 SAMPLE_WIDTH_BYTES = 2
 WAV_FRAME_RATE_HZ  = 16000
 TARGET_BYTES       = 320000
-GAIN               = 3
 
 def openWavFile(file_path, mode):
     wavFile = wave.open(file_path, mode)
@@ -49,33 +48,19 @@ def conditionAudio(audio):
     numpy_array = np.frombuffer(audio, dtype = np.int16)
     array_normalized = numpy_array.astype(np.float32) / 32768.0
 
-    return GAIN * array_normalized
+    return array_normalized
 
 def transcribe(model, queue):
-    # Condition the audio from queue
+    rec = KaldiRecognizer(model, WAV_FRAME_RATE_HZ)
     while True:
-        array_normalized = conditionAudio(queue.get())
-
-        # Transcribe and print
-        segments = model.transcribe(array_normalized)
-        for segment in segments:
-            print(segment.text)
+        if (rec.AcceptWaveform(queue.get())):
+            print(rec.Result())
+        
 
 def runAudioServer(socketUDP, wavFile, textFile, audioQ):
-    buffer = bytearray()
-
     while True:
         data, addr = socketUDP.recvfrom(512)
-        buffer.extend(data)
-        wavFile.writeframes(data)
-
-        if wavFile.tell() >= NUM_FRAMES:
-            buffer_copy = buffer.copy()
-            audioQ.put(buffer_copy)
-            buffer.clear()
-            wavFile.close()
-            shutil.copy(WAV_PATH, "chunk.wav")
-            wavFile = openWavFile(WAV_PATH, "wb")
+        audioQ.put(data)
             
 def runVideoServer(socketTCP, file):
     while True:
@@ -90,18 +75,11 @@ print("Server Initializing")
 socketUDP, wavFile, textFile = initAudioServer()
 socketTCP, mjpegFile = initVideoServer()
 
-model = Model(
-    model = 'small.en', 
-    print_realtime=False, 
-    print_progress=False,
-    audio_ctx=192,
-    suppress_blank=True,
-    single_segment=True
-)
+model = Model(lang="en-us")
 
-thread1 = threading.Thread(target = runAudioServer, args = (socketUDP, wavFile, textFile, audioQ))
-thread2 = threading.Thread(target = runVideoServer, args = (socketTCP, mjpegFile))
-thread3 = threading.Thread(target = transcribe, args = (model, audioQ))
+thread1 = threading.Thread(target=runAudioServer, args = (socketUDP, wavFile, textFile, audioQ))
+thread2 = threading.Thread(target=runVideoServer, args = (socketTCP, mjpegFile))
+thread3 = threading.Thread(target=transcribe, args= (model, audioQ))
 
 thread1.start()
 thread2.start()
