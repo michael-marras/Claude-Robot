@@ -1,8 +1,11 @@
 import socket
 import wave
 import threading
-import shutil
 import numpy as np 
+import multiprocessing
+import webrtcvad
+import json
+import collections
 
 from vosk import Model, KaldiRecognizer
 
@@ -16,6 +19,7 @@ NUM_CHANNELS       = 1
 SAMPLE_WIDTH_BYTES = 2
 WAV_FRAME_RATE_HZ  = 16000
 TARGET_BYTES       = 320000
+COMMANDS           = ["claude", "walk", "move", "forward", "backward", "left", "right", "stop", "sit", "[unk]"]
 
 def openWavFile(file_path, mode):
     wavFile = wave.open(file_path, mode)
@@ -28,10 +32,7 @@ def initAudioServer():
     server1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server1.bind(('0.0.0.0', PORT))
 
-    wavFile = openWavFile(WAV_PATH, "wb")
-    textFile = open(TXT_PATH, "w")
-
-    return server1, wavFile, textFile
+    return server1
 
 def initVideoServer():
     server2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -43,16 +44,27 @@ def initVideoServer():
     
     return client, mjpegFile
 
+def conditionAudio(audio):
+    audio = np.frombuffer(audio, dtype=np.int16)
+    audio = (audio - audio.mean()).astype(np.int16)
+    return audio.tobytes()
     
-def transcribe(rec, data):
-    if (rec.AcceptWaveform(data)):
-        print(rec.Result())
-        
-def runAudioServer(socketUDP, wavFile, textFile, audioQ, model):
-    rec = KaldiRecognizer(model, WAV_FRAME_RATE_HZ)
+def transcribe(model, queue):
+    rec = KaldiRecognizer(model, WAV_FRAME_RATE_HZ, json.dumps(COMMANDS))
+
     while True:
-        data, addr = socketUDP.recvfrom(512)
-        transcribe(rec, data)
+        if not queue.empty():
+            if (rec.AcceptWaveform(queue.get())):
+                print(rec.Result())
+        
+def runAudioServer(socketUDP, queue):
+    wavFile = openWavFile(WAV_PATH, "wb")
+
+    while True:
+        data, addr = socketUDP.recvfrom(320)
+        data = conditionAudio(data)
+        queue.put(data)
+        wavFile.writeframes(data)
             
 def runVideoServer(socketTCP, file):
     while True:
@@ -60,18 +72,19 @@ def runVideoServer(socketTCP, file):
         file.write(videoData)
 
 # Entry Point
+queue = multiprocessing.Queue()
 
 print("Server Initializing")
 
-socketUDP, wavFile, textFile = initAudioServer()
+socketUDP = initAudioServer()
 socketTCP, mjpegFile = initVideoServer()
 
 model = Model(model_name = "vosk-model-en-us-0.42-gigaspeech")
 
-thread1 = threading.Thread(target=runAudioServer, args = (socketUDP, wavFile, textFile, audioQ, model))
-thread2 = threading.Thread(target=runVideoServer, args = (socketTCP, mjpegFile))
-# thread3 = threading.Thread(target=transcribe, args= (model, audioQ))
+thread1 = threading.Thread(target=runAudioServer, args=(socketUDP, queue))
+thread2 = threading.Thread(target=runVideoServer, args=(socketTCP, mjpegFile))
+thread3 = threading.Thread(target=transcribe, args=(model, queue))
 
 thread1.start()
 thread2.start()
-# thread3.start()
+thread3.start()

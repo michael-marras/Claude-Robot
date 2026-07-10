@@ -5,7 +5,7 @@
 #include "camera_pins.h"
 #include <WiFi.h>
 
-static constexpr size_t AUDIO_SAMPLES = 512;   
+static constexpr size_t NUM_BYTES = 320;   
 
 class Head {
     public:
@@ -115,7 +115,7 @@ class Head {
 
     private:
         bool    headInitialized_ = false;
-        char    audioBuffer_[AUDIO_SAMPLES] = {}; 
+        char    audioBuffer_[NUM_BYTES] = {}; 
 
         I2SClass      i2S_; 
         NetworkUDP    udp_;
