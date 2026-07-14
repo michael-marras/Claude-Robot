@@ -1,5 +1,5 @@
 # Claude Robot
-## An autonomous robot powered by claude sonnet 4.5
+## An autonomous robot powered by claude Haiku 4.5
 This is a fully autonomous robot that utilizes computer vision, and speech-to-text/text-to-speech to send
 processed data for claude to direct outputs of the robot
 

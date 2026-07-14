@@ -7,6 +7,7 @@ constexpr uint8_t  PDM_MIC_CLK_PIN  = 42;
 constexpr uint32_t TWENTY_MHZ       = 20000000;
 constexpr uint16_t PORT             = 9997;
 constexpr uint8_t  CPU_CORE         = 1;
+constexpr uint8_t  HEADER_SIZE      = 4;
 
 constexpr uint8_t  MIC_TASK_PRIORITY = 4;
 constexpr uint8_t  RCV_TASK_PRIORITY = 3;
@@ -231,6 +232,12 @@ void Head::sendAudio(size_t size) {
 }
 
 void Head::sendVideo(camera_fb_t* frameBuffer) {
+	uint32_t len = frameBuffer->len;
+	if (tcp_.write(reinterpret_cast<uint8_t*>(&len), HEADER_SIZE) < HEADER_SIZE) {
+		Serial.println("length header truncated");
+		tcp_.stop();
+		return;
+	}
 	if(tcp_.write(frameBuffer -> buf, frameBuffer -> len) < frameBuffer -> len) {
 		Serial.println("frame truncated");
 		tcp_.stop();
