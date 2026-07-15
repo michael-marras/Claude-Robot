@@ -83,7 +83,7 @@ def detectObjects(model, queue):
     
 def runAudioServer(socketUDP, queue):
     wavFile = openWavFile(WAV_PATH)
-    vad = webrtcvad.Vad(mode=1)
+    vad = webrtcvad.Vad(mode=2)
     silentFrames = 0
     while True:
         data, addr = socketUDP.recvfrom(UDP_BYTES_RECV)

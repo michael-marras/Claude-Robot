@@ -1,4 +1,4 @@
-from server_whisper import openWavFile, initAudioServer, initVideoServer, conditionAudio
+from server import *
 import wave
 
 WAV_PATH = "./out/audio/test.wav"

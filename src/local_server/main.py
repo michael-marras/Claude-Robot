@@ -2,7 +2,7 @@ import multiprocessing
 import threading
 from pywhispercpp.model import Model
 
-from server_whisper import *
+from server import *
 
 ADDRESS = '0.0.0.0'
 PORT    = 9997
@@ -24,7 +24,10 @@ transcriptionModel = Model(
     suppress_non_speech_tokens=True
 )
 
-objectDetectionModel = YOLO()
+objectDetectionModel = YOLO(
+    model="yolo26x.pt",
+    verbose=True
+)
 
 thread1 = threading.Thread(target=runAudioServer, args=(socketUDP, audioQ))
 thread2 = threading.Thread(target=runVideoServer, args=(socketTCP, frameQ))

@@ -8,6 +8,7 @@ constexpr uint32_t TWENTY_MHZ       = 20000000;
 constexpr uint16_t PORT             = 9997;
 constexpr uint8_t  CPU_CORE         = 1;
 constexpr uint8_t  HEADER_SIZE      = 4;
+constexpr uint16_t CAMERA_DELAY     = 1000;
 
 constexpr uint8_t  MIC_TASK_PRIORITY = 4;
 constexpr uint8_t  RCV_TASK_PRIORITY = 3;
@@ -149,7 +150,7 @@ camera_config_t Head::initCameraConfig() {
 
 	// --- Image format ---
 	config.pixel_format = PIXFORMAT_JPEG;   // pre-compressed, forward as-is
-	config.frame_size   = FRAMESIZE_VGA;    // 640x480 — good for YOLO
+	config.frame_size   = FRAMESIZE_VGA; 
 	config.jpeg_quality = 12;               // 0–63, lower = better/bigger
 
 	// --- Frame buffers ---
@@ -265,6 +266,7 @@ void Head::receiveCommandsTaskEntry(void* pvParameters) {
 }
 
 void Head::cameraTask() {
+	TickType_t lastUnblock = xTaskGetTickCount();
 	while(1) {
 		if (!tcp_.connected()) {
 			tcp_.connect(IPAddress(IP_ADDRESS), PORT);
@@ -273,6 +275,7 @@ void Head::cameraTask() {
 		camera_fb_t* frameBuffer = this -> getFrameBuffer();
 		this -> sendVideo(frameBuffer);
 		this -> returnFrameBuffer(frameBuffer);
+		xTaskDelayUntil(&lastUnblock, pdMS_TO_TICKS(CAMERA_DELAY));
 	}
 }
 
