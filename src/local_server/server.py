@@ -3,6 +3,7 @@ import wave
 import numpy as np 
 import webrtcvad
 import cv2
+import espeak_ng
 
 from ultralytics import YOLO
 
@@ -57,29 +58,42 @@ def recvExact(sock, n):
         buf.extend(chunk)
     return bytes(buf)
     
-def transcribe(model, queue):
+def transcribe(model, queue1, queue2):
     buffer = bytearray()
     while True:
-        chunk = queue.get()  # blocks until something arrives
+        chunk = queue1.get()  # blocks until something arrives
         if chunk is None:
             if buffer:
                 segments = model.transcribe(conditionAudio(buffer))
                 for segment in segments:
                     print(segment.text)
+                    queue2.put(segment.text)
                 buffer.clear()  # reset for next utterance
         else:
             buffer.extend(chunk)
+
+def callback(wav, num_samples, event):
+    print(type(wav), len(wav))
+    return 0
+
+def textToSpeech(queue):
+    espeak_ng.initialize()
+    espeak_ng.set_synth_callback(callback)
+    while True:
+        espeak_ng.synth(queue.get())
 
 def detectObjects(model, queue):
     while True:
         frame = conditionFrame(queue.get())
         results = model.predict(
             source=frame,
-            save=True
+            save=True,
+            verbose=True,
+            conf=0.5
         )
 
-        for result in results:
-            print(result.verbose())
+        # for result in results:
+        #     print(result.verbose())
     
 def runAudioServer(socketUDP, queue):
     wavFile = openWavFile(WAV_PATH)
