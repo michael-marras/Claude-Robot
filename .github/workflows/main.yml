@@ -1,11 +1,9 @@
 name: CI
-
 on: [push]
-
-jobs: 
+jobs:
   build:
       runs-on: ubuntu-latest
-  
+
       steps:
         - uses: actions/checkout@v6
         - uses: actions/cache@v4
@@ -19,7 +17,11 @@ jobs:
             python-version: '3.14'
         - name: Install PlatformIO Core
           run: pip install --upgrade platformio
-        - name: Build PlatformIO Project
-          run: pio run
+        - name: Create secrets.h stub
+          run: cp include/secrets.h.example include/secrets.h
+        - name: Build firmware (head + body)
+          run: pio run -e head -e body
+        - name: Run native unit tests
+          run: pio test -e test_native
         - name: Static Code Analysis
-          run: pio check --fail-on-defect=high
+          run: pio check -e head -e body --fail-on-defect=high
