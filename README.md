@@ -1,5 +1,6 @@
 # Claude Robot
 ## An autonomous robot powered by claude Haiku 4.5
+![CI](https://github.com/michael-marras/Claude-Robot/actions/workflows/main.yml/badge.svg) \
 This is a fully autonomous robot that utilizes computer vision, and speech-to-text/text-to-speech to send
 processed data for claude to direct outputs of the robot
 
