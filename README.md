@@ -8,19 +8,8 @@ processed data for claude to direct outputs of the robot
 - In Progress
 
 ## Architecture
-### Parts Used
-- Head
-  - Seeed Studio Xiao Esp32S3 Sense
-  - NS4168
-    - mini 4-8 ohm Speaker
-- Body (Quadruped)
-  - ESP32-DevKitC-32 Development Board
-  - 8x MG90S all-metal micro servos
-  - Buck converter (5V out, ~5A) — steps the 7.4V battery down to ~5V for the servos. Required: 7.4V would damage the MG90S (rated 4.8–6V). Sized at 5A for headroom with 8 servos.
-  - Battery connector/pigtail — match the battery's connector (XT30 or JST); don't cut the stock leads.
-  - 1000µF electrolytic capacitor (10V+) — across the buck output to smooth servo current surges and prevent brownout resets.
-  - Silicone wire — 22AWG for power/ground, 30AWG for signal leads.
 
+### Bill of Materials
 | Subsystem | Part | Amazon Link |
 |---|---|---|
 | Head | Seeed Studio XIAO ESP32S3 Sense | https://www.amazon.com/Seeed-Studio-XIAO-ESP32S3-Sense/dp/B0C33N99BX |
