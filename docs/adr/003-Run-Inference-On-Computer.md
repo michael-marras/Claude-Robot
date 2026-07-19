@@ -2,7 +2,7 @@
 Run Inference On Computer
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 The Xiao Esp32S3 cannot handle ultralyitics yolov11 and open ai's optimized whisper. 

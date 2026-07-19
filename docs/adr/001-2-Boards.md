@@ -2,7 +2,7 @@
 Using Two dev Boards
 
 ## Status
-Pending
+Accepted
 
 ## Context
 The robot needs to be able to smoothly move while making visual inference as well as have enough gpio pins

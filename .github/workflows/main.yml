@@ -1,0 +1,25 @@
+name: CI
+on: [push]
+jobs:
+  build:
+      runs-on: ubuntu-latest
+
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/cache@v4
+          with:
+            path: |
+              ~/.cache/pip
+              ~/.platformio/.cache
+            key: ${{ runner.os }}-pio
+        - uses: actions/setup-python@v6
+          with:
+            python-version: '3.14'
+        - name: Install PlatformIO Core
+          run: pip install --upgrade platformio
+        - name: Create secrets.h stub
+          run: cp include/secrets.h.example include/secrets.h
+        - name: Build firmware (head + body)
+          run: pio run -e head -e body
+        - name: Static Code Analysis
+          run: pio check -e head -e body --fail-on-defect=high --skip-packages

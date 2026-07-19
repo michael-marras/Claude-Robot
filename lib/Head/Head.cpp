@@ -5,8 +5,10 @@ constexpr uint16_t SIXTEEN_KHZ      = 16000;
 constexpr uint8_t  PDM_MIC_DATA_PIN = 41;
 constexpr uint8_t  PDM_MIC_CLK_PIN  = 42;
 constexpr uint32_t TWENTY_MHZ       = 20000000;
-constexpr uint16_t PORT             = 9998;
+constexpr uint16_t PORT             = 9997;
 constexpr uint8_t  CPU_CORE         = 1;
+constexpr uint8_t  HEADER_SIZE      = 4;
+constexpr uint16_t CAMERA_DELAY     = 1000;
 
 constexpr uint8_t  MIC_TASK_PRIORITY = 4;
 constexpr uint8_t  RCV_TASK_PRIORITY = 3;
@@ -148,7 +150,7 @@ camera_config_t Head::initCameraConfig() {
 
 	// --- Image format ---
 	config.pixel_format = PIXFORMAT_JPEG;   // pre-compressed, forward as-is
-	config.frame_size   = FRAMESIZE_VGA;    // 640x480 — good for YOLO
+	config.frame_size   = FRAMESIZE_VGA; 
 	config.jpeg_quality = 12;               // 0–63, lower = better/bigger
 
 	// --- Frame buffers ---
@@ -231,6 +233,12 @@ void Head::sendAudio(size_t size) {
 }
 
 void Head::sendVideo(camera_fb_t* frameBuffer) {
+	uint32_t len = frameBuffer->len;
+	if (tcp_.write(reinterpret_cast<uint8_t*>(&len), HEADER_SIZE) < HEADER_SIZE) {
+		Serial.println("length header truncated");
+		tcp_.stop();
+		return;
+	}
 	if(tcp_.write(frameBuffer -> buf, frameBuffer -> len) < frameBuffer -> len) {
 		Serial.println("frame truncated");
 		tcp_.stop();
@@ -254,10 +262,11 @@ void Head::microphoneTaskEntry(void* pvParameters) {
 }
 
 void Head::receiveCommandsTaskEntry(void* pvParameters) {
-	static_cast<Head*>(pvParameters) -> microphoneTask(); 
+	static_cast<Head*>(pvParameters) -> receiveCommandsTask(); 
 }
 
 void Head::cameraTask() {
+	TickType_t lastUnblock = xTaskGetTickCount();
 	while(1) {
 		if (!tcp_.connected()) {
 			tcp_.connect(IPAddress(IP_ADDRESS), PORT);
@@ -266,6 +275,7 @@ void Head::cameraTask() {
 		camera_fb_t* frameBuffer = this -> getFrameBuffer();
 		this -> sendVideo(frameBuffer);
 		this -> returnFrameBuffer(frameBuffer);
+		xTaskDelayUntil(&lastUnblock, pdMS_TO_TICKS(CAMERA_DELAY));
 	}
 }
 

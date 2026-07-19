@@ -5,3 +5,9 @@
 .vscode/ipch
 secrets.h
 .venv
+out/
+chunk.wav
+.pytest_cache/
+__pycache__/
+run/
+yolo26x.pt

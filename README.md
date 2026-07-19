@@ -1,5 +1,6 @@
 # Claude Robot
-## An autonomous robot powered by claude sonnet 4.5
+## An autonomous robot powered by claude Haiku 4.5
+![CI](https://github.com/michael-marras/Claude-Robot/actions/workflows/main.yml/badge.svg) \
 This is a fully autonomous robot that utilizes computer vision, and speech-to-text/text-to-speech to send
 processed data for claude to direct outputs of the robot
 
@@ -7,20 +8,20 @@ processed data for claude to direct outputs of the robot
 - In Progress
 
 ## Architecture
-### Parts Used
-- Head
-  - Seeed Studio Xiao Esp32S3 Sense
-  - MAX98357A
-    - mini 4-8 ohm Speaker
-  - servo motor
-  - 0.96" SSD1306 I2C OLED
-- Body (Quadruped)
-  - ESP32-DevKitC-32 Development Board
-  - 8x MG90S all-metal micro servos
-  - Buck converter (5V out, ~5A) — steps the 7.4V battery down to ~5V for the servos. Required: 7.4V would damage the MG90S (rated 4.8–6V). Sized at 5A for headroom with 8 servos.
-  - Battery connector/pigtail — match the battery's connector (XT30 or JST); don't cut the stock leads.
-  - 1000µF electrolytic capacitor (10V+) — across the buck output to smooth servo current surges and prevent brownout resets.
-  - Silicone wire — 22AWG for power/ground, 30AWG for signal leads.
+
+### Bill of Materials
+| Subsystem | Part | Amazon Link |
+|---|---|---|
+| Head | Seeed Studio XIAO ESP32S3 Sense | https://www.amazon.com/Seeed-Studio-XIAO-ESP32S3-Sense/dp/B0C33N99BX |
+| Head | NS4168 speaker driver/amp | https://www.amazon.com/Amplifier-Raspberry-Technology-Shielding-Compatible/dp/B0GGBRPKBT |
+| Head | Mini speaker, 4–8Ω | https://www.amazon.com/Amplifier-Raspberry-Technology-Shielding-Compatible/dp/B0GGBRPKBT |
+| Body | ESP32-DevKitC-32 development board | https://www.amazon.com/ESP32-DevKitC-Development-ESP32-WROOM-32D-Wireless-Module/dp/B091CCSPQ1 |
+| Body | MG90S micro servo ×8, all-metal | https://www.amazon.com/MG90S-Servo-Motor-Helicopter-Arduino/dp/B01JY3H4MA |
+| Body | Buck converter, 5V/~5A out (steps 7.4V battery down; MG90S rated 4.8–6V) | https://www.amazon.com/DROK-090581-Converter-Step-down-Transformer/dp/B00CE75K0W |
+| Body | Battery connector/pigtail (match battery connector — XT30 or JST; don't cut stock leads) | https://www.amazon.com/YETOR-Connector-Pigtail-Adapter-Silicone/dp/B0GWGSDGZ7 |
+| Body | Electrolytic capacitor, 1000µF 25V (smooths servo current surges, prevents brownout) | https://www.amazon.com/Pieces-1000uf-Capacitor-Aluminum-Electrolytic/dp/B07R432MR2 |
+| Body | Silicone wire, 22AWG power/ground | https://www.amazon.com/StrivedayTMFlexible-Silicone-Electric-electronic-electrics/dp/B01LH1FR6M |
+| Body | Silicone wire, 30AWG signal | https://www.amazon.com/StrivedayTM-Flexible-Silicone-electronic-electrics/dp/B01KQ2JNLI |
   
 ### Technologies Used
 - C++ (Arduino framework)

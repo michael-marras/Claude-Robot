@@ -2,7 +2,7 @@
 Xiao Esp32S3
 
 ## Status
-Pending
+Accepted
 
 ## Context
 We need to be able to send visual and audio data to the llm. So we need a camera and a microphone to be on our robot.
