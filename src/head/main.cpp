@@ -15,6 +15,10 @@ void initializeWireless() {
 		delay(500);
 		Serial.print(".");
 	}
+
+	Serial.println();
+	Serial.print("IP address: ");
+	Serial.println(WiFi.STA.localIP());
 }
 
 void setup() {

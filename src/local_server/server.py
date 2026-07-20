@@ -16,6 +16,7 @@ WAV_FRAME_RATE_HZ  = 16000
 SILENCE_LIMIT      = 20  
 UDP_BYTES_RECV     = 320
 TCP_BYTES_RECV     = 4096
+HEAD_ADDR          = "192.168.86.34"
 
 def openWavFile(file_path):
     wavFile = wave.open(file_path, "wb")
@@ -27,6 +28,7 @@ def openWavFile(file_path):
 def initAudioServer(address, port):
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server.bind((address, port))
+    server.connect((HEAD_ADDR, PORT))
     return server
 
 def initVideoServer(address, port):
@@ -72,12 +74,17 @@ def transcribe(model, queue1, queue2):
         else:
             buffer.extend(chunk)
 
-def callback(wav, num_samples, event):
-    print(type(wav), len(wav))
-    return 0
+def textToSpeech(queue, socketUDP):
+    espeak_ng.initialize(output=espeak_ng.espeak_AUDIO_OUTPUT.AUDIO_OUTPUT_RETRIEVAL)
 
-def textToSpeech(queue):
-    espeak_ng.initialize()
+    def callback(wav, num_samples, event):
+        if wav is not None and num_samples > 0:
+            if socketUDP.send(wav[:num_samples * 2]) <= 0:
+                print("bytes not")
+            
+        
+        return 0
+    
     espeak_ng.set_synth_callback(callback)
     while True:
         espeak_ng.synth(queue.get())

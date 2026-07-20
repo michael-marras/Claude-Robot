@@ -6,6 +6,12 @@
 #include <WiFi.h>
 
 static constexpr size_t NUM_BYTES = 320;   
+static constexpr size_t TTS_BUFFER_SIZE = 2944;
+
+struct TtsChunk {
+    uint8_t data[TTS_BUFFER_SIZE];
+    size_t  length;
+};
 
 class Head {
     public:
@@ -51,7 +57,13 @@ class Head {
          * @return true on success
          */
         bool deinitMicrophone();
-         /**
+
+        /**
+         * 
+         */
+        bool initSpeaker();
+
+        /**
          * @brief Initialize the config for the camera
          * 
          * @returns The config for the camera to be initialized with
@@ -114,10 +126,12 @@ class Head {
         void checkInitialized();
 
     private:
-        bool    headInitialized_ = false;
-        char    audioBuffer_[NUM_BYTES] = {}; 
+        bool headInitialized_            = false;
+        char audioBuffer_[NUM_BYTES]     = {}; 
 
+        QueueHandle_t ttsQueue_;
         I2SClass      i2S_; 
+        I2SClass      i2sSpeaker_;
         NetworkUDP    udp_;
         NetworkClient tcp_;
 
@@ -140,7 +154,14 @@ class Head {
          * 
          * @param pvParameters Pointer that will be used as the parameter for the task being created
          */
-        static void receiveCommandsTaskEntry(void* pvParameters);
+        static void receiveSpeechTaskEntry(void* pvParameters);
+
+        /** 
+         * @brief Entry point for the speech task
+         * 
+         * @param pvParameters Pointer that will be used as the parameter for the task being created
+         */
+        static void speechTaskEntry(void* pvParameters);
 
         /**
          * @brief Task handled by scheduler in charge of capturing camera data and sending it to the companion server
@@ -155,5 +176,10 @@ class Head {
         /**
          * @brief Task handled by scheduler in charge of receiving commands from the companion server
          */
-        void receiveCommandsTask();
+        void receiveSpeechTask();
+
+        /**
+         * @brief Task handled by scheduler in charge of producing speech
+         */
+        void speechTask();
 };

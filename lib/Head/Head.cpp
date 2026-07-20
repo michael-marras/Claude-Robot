@@ -9,14 +9,19 @@ constexpr uint16_t PORT             = 9997;
 constexpr uint8_t  CPU_CORE         = 1;
 constexpr uint8_t  HEADER_SIZE      = 4;
 constexpr uint16_t CAMERA_DELAY     = 1000;
+constexpr uint8_t  TTS_QUEUE_LENGTH = 16;
 
-constexpr uint8_t  MIC_TASK_PRIORITY = 4;
-constexpr uint8_t  RCV_TASK_PRIORITY = 3;
-constexpr uint8_t  CAM_TASK_PRIORITY = 2;
+constexpr uint8_t  MIC_TASK_PRIORITY    = 5;
+constexpr uint8_t  SPEECH_TASK_PRIORITY = 4;
+constexpr uint8_t  CAM_TASK_PRIORITY    = 3;
+constexpr uint8_t  RCV_TASK_PRIORITY    = 2;
 
-constexpr uint32_t MIC_TASK_STACK_BYTES = 4096;
-constexpr uint32_t RCV_TASK_STACK_BYTES = 4096;
-constexpr uint32_t CAM_TASK_STACK_BYTES = 8192;
+
+
+constexpr uint32_t MIC_TASK_STACK_BYTES    = 4096;
+constexpr uint32_t RCV_TASK_STACK_BYTES    = 8192;
+constexpr uint32_t CAM_TASK_STACK_BYTES    = 8192;
+constexpr uint32_t SPEECH_TASK_STACK_BYTES = 8192;
 
 constexpr const char* MESSAGE_INIT_SUCCESS = "Head Initialized Successfully";
 constexpr const char* MESSAGE_INIT_ERROR   = "Error initalizing head";
@@ -29,7 +34,6 @@ constexpr const char* MESSAGE_MIC_DEINIT_ERROR  = "Camera failed to deinit";
 constexpr const char* MESSAGE_CAM_DEINIT_ERROR  = "Camera failed to deinit";
 constexpr const char* MESSAGE_RETURN_FB_ERROR   = "Failed to return framebuffer";
 
-
 bool Head::init() {
 	Serial.println(MESSAGE_INIT);
     camera_config_t cameraConfig = this -> initCameraConfig();
@@ -40,6 +44,16 @@ bool Head::init() {
 	}
 	else if(!this -> initMicrophone()) {
 		Serial.println(MESSAGE_INIT_ERROR);
+		return false;
+	}
+	else if(!this -> initSpeaker()) {
+		Serial.println("speaker is a bitch");
+		return false;
+	}
+
+	ttsQueue_ = xQueueCreate(TTS_QUEUE_LENGTH, sizeof(TtsChunk));
+	if (ttsQueue_ == nullptr) {
+		Serial.println("Failed to create TTS queue");
 		return false;
 	}
 
@@ -116,6 +130,14 @@ bool Head::deinitMicrophone() {
 	return true;
 }
 
+bool Head::initSpeaker() {
+	bool speakerBooted;
+	i2sSpeaker_.setPins(D0, D1, D2);
+	speakerBooted = i2sSpeaker_.begin(I2S_MODE_STD, 16000, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
+
+	return speakerBooted;
+}
+
 camera_config_t Head::initCameraConfig() {
     camera_config_t config = {};
 
@@ -174,15 +196,15 @@ void Head::startTasks() {
 		CPU_CORE
 	);
 
-	// xTaskCreatePinnedToCore(
-	// 	receiveCommandsTaskEntry, 
-	// 	"receiving commands from companion code",
-	// 	RCV_TASK_STACK_BYTES,
-	// 	this,
-	// 	RCV_TASK_PRIORITY,
-	// 	nullptr,
-	// 	CPU_CORE
-	// );
+	xTaskCreatePinnedToCore(
+		receiveSpeechTaskEntry, 
+		"receiving speech from companion code",
+		RCV_TASK_STACK_BYTES,
+		this,
+		RCV_TASK_PRIORITY,
+		nullptr,
+		CPU_CORE
+	);
 
 	xTaskCreatePinnedToCore(
 		cameraTaskEntry, 
@@ -190,6 +212,16 @@ void Head::startTasks() {
 		CAM_TASK_STACK_BYTES,
 		this,
 		CAM_TASK_PRIORITY,
+		nullptr,
+		CPU_CORE
+	);
+
+	xTaskCreatePinnedToCore(
+		speechTaskEntry,
+		"producting speech",
+		SPEECH_TASK_STACK_BYTES,
+		this,
+		SPEECH_TASK_PRIORITY,
 		nullptr,
 		CPU_CORE
 	);
@@ -261,8 +293,12 @@ void Head::microphoneTaskEntry(void* pvParameters) {
 	static_cast<Head*>(pvParameters) -> microphoneTask(); 
 }
 
-void Head::receiveCommandsTaskEntry(void* pvParameters) {
-	static_cast<Head*>(pvParameters) -> receiveCommandsTask(); 
+void Head::receiveSpeechTaskEntry(void* pvParameters) {
+	static_cast<Head*>(pvParameters) -> receiveSpeechTask(); 
+}
+
+void Head::speechTaskEntry(void* pvParameters) {
+	static_cast<Head*>(pvParameters) -> speechTask();
 }
 
 void Head::cameraTask() {
@@ -287,7 +323,33 @@ void Head::microphoneTask() {
 	}
 }
 
-void Head::receiveCommandsTask() {
-	// TODO
+void Head::receiveSpeechTask() {
+	TtsChunk chunk;
+	while(1) {
+		int packetSize = udp_.parsePacket();
+		if (packetSize > 0) {
+			Serial.println("packet received");
+			int16_t len = udp_.read(chunk.data, TTS_BUFFER_SIZE);
+			if (len <= 0) {
+				Serial.println("read failed");
+			}
+			else {
+				Serial.println(packetSize);
+				chunk.length = static_cast<size_t>(len);
+				if (xQueueSend(ttsQueue_, &chunk, 0) != pdTRUE) {
+					Serial.println("queue full, dropped");
+				}
+			}
+		}
+	}
 }
 
+void Head::speechTask() {
+	TtsChunk chunk;
+	while(1){
+		if (xQueueReceive(ttsQueue_, &chunk, portMAX_DELAY) == pdTRUE) {
+            i2sSpeaker_.write(chunk.data, chunk.length);
+        }
+		Serial.println("test");
+	}
+}
