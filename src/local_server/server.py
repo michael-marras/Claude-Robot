@@ -4,6 +4,7 @@ import numpy as np
 import webrtcvad
 import cv2
 import espeak_ng
+import ctypes
 
 from ultralytics import YOLO
 
@@ -16,7 +17,7 @@ WAV_FRAME_RATE_HZ  = 16000
 SILENCE_LIMIT      = 20  
 UDP_BYTES_RECV     = 320
 TCP_BYTES_RECV     = 4096
-HEAD_ADDR          = "192.168.86.34"
+HEAD_ADDR          = "192.168.86.22"
 
 def openWavFile(file_path):
     wavFile = wave.open(file_path, "wb")
@@ -77,12 +78,21 @@ def transcribe(model, queue1, queue2):
 def textToSpeech(queue, socketUDP):
     espeak_ng.initialize(output=espeak_ng.espeak_AUDIO_OUTPUT.AUDIO_OUTPUT_RETRIEVAL)
 
+    wf = wave.open("debug_tts.wav", "wb")
+    wf.setnchannels(1)
+    wf.setsampwidth(2)
+    wf.setframerate(22050)
+
     def callback(wav, num_samples, event):
-        if wav is not None and num_samples > 0:
-            if socketUDP.send(wav[:num_samples * 2]) <= 0:
-                print("bytes not")
-            
-        
+        try:
+            if wav is not None and num_samples > 0:
+                data = ctypes.string_at(wav, num_samples * 2)
+                wf.writeframes(data)  # capture exactly what gets sent
+                sent = socketUDP.send(data)
+                if sent <= 0:
+                    print("bytes not sent")
+        except Exception as e:
+            print(f"callback error: {e}")
         return 0
     
     espeak_ng.set_synth_callback(callback)

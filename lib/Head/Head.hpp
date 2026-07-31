@@ -131,7 +131,7 @@ class Head {
 
         QueueHandle_t ttsQueue_;
         I2SClass      i2S_; 
-        I2SClass      i2sSpeaker_;
+        // I2SClass      i2sSpeaker_;
         NetworkUDP    udp_;
         NetworkClient tcp_;
 

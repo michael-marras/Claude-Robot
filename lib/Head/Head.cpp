@@ -9,14 +9,12 @@ constexpr uint16_t PORT             = 9997;
 constexpr uint8_t  CPU_CORE         = 1;
 constexpr uint8_t  HEADER_SIZE      = 4;
 constexpr uint16_t CAMERA_DELAY     = 1000;
-constexpr uint8_t  TTS_QUEUE_LENGTH = 16;
+constexpr uint8_t  TTS_QUEUE_LENGTH = 32;
 
-constexpr uint8_t  MIC_TASK_PRIORITY    = 5;
-constexpr uint8_t  SPEECH_TASK_PRIORITY = 4;
-constexpr uint8_t  CAM_TASK_PRIORITY    = 3;
-constexpr uint8_t  RCV_TASK_PRIORITY    = 2;
-
-
+constexpr uint8_t  MIC_TASK_PRIORITY    = 4;
+constexpr uint8_t  SPEECH_TASK_PRIORITY = 5;
+constexpr uint8_t  RCV_TASK_PRIORITY    = 3;
+constexpr uint8_t  CAM_TASK_PRIORITY    = 2;
 
 constexpr uint32_t MIC_TASK_STACK_BYTES    = 4096;
 constexpr uint32_t RCV_TASK_STACK_BYTES    = 8192;
@@ -46,10 +44,10 @@ bool Head::init() {
 		Serial.println(MESSAGE_INIT_ERROR);
 		return false;
 	}
-	else if(!this -> initSpeaker()) {
-		Serial.println("speaker is a bitch");
-		return false;
-	}
+	// else if(!this -> initSpeaker()) {
+	// 	Serial.println("speaker is a bitch");
+	// 	return false;
+	// }
 
 	ttsQueue_ = xQueueCreate(TTS_QUEUE_LENGTH, sizeof(TtsChunk));
 	if (ttsQueue_ == nullptr) {
@@ -130,13 +128,13 @@ bool Head::deinitMicrophone() {
 	return true;
 }
 
-bool Head::initSpeaker() {
-	bool speakerBooted;
-	i2sSpeaker_.setPins(D0, D1, D2);
-	speakerBooted = i2sSpeaker_.begin(I2S_MODE_STD, 16000, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
+// bool Head::initSpeaker() {
+// 	bool speakerBooted;
+// 	i2sSpeaker_.setPins(D0, D1, D2);
+// 	speakerBooted = i2sSpeaker_.begin(I2S_MODE_STD, 22050, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_RIGHT);
 
-	return speakerBooted;
-}
+// 	return speakerBooted;
+// }
 
 camera_config_t Head::initCameraConfig() {
     camera_config_t config = {};
@@ -196,15 +194,15 @@ void Head::startTasks() {
 		CPU_CORE
 	);
 
-	xTaskCreatePinnedToCore(
-		receiveSpeechTaskEntry, 
-		"receiving speech from companion code",
-		RCV_TASK_STACK_BYTES,
-		this,
-		RCV_TASK_PRIORITY,
-		nullptr,
-		CPU_CORE
-	);
+	// xTaskCreatePinnedToCore(
+	// 	receiveSpeechTaskEntry, 
+	// 	"receiving speech from companion code",
+	// 	RCV_TASK_STACK_BYTES,
+	// 	this,
+	// 	RCV_TASK_PRIORITY,
+	// 	nullptr,
+	// 	CPU_CORE
+	// );
 
 	xTaskCreatePinnedToCore(
 		cameraTaskEntry, 
@@ -216,15 +214,15 @@ void Head::startTasks() {
 		CPU_CORE
 	);
 
-	xTaskCreatePinnedToCore(
-		speechTaskEntry,
-		"producting speech",
-		SPEECH_TASK_STACK_BYTES,
-		this,
-		SPEECH_TASK_PRIORITY,
-		nullptr,
-		CPU_CORE
-	);
+	// xTaskCreatePinnedToCore(
+	// 	speechTaskEntry,
+	// 	"producting speech",
+	// 	SPEECH_TASK_STACK_BYTES,
+	// 	this,
+	// 	SPEECH_TASK_PRIORITY,
+	// 	nullptr,
+	// 	CPU_CORE
+	// );
 }
 
 void Head::printSample(int16_t sample) {
@@ -293,13 +291,13 @@ void Head::microphoneTaskEntry(void* pvParameters) {
 	static_cast<Head*>(pvParameters) -> microphoneTask(); 
 }
 
-void Head::receiveSpeechTaskEntry(void* pvParameters) {
-	static_cast<Head*>(pvParameters) -> receiveSpeechTask(); 
-}
+// void Head::receiveSpeechTaskEntry(void* pvParameters) {
+// 	static_cast<Head*>(pvParameters) -> receiveSpeechTask(); 
+// }
 
-void Head::speechTaskEntry(void* pvParameters) {
-	static_cast<Head*>(pvParameters) -> speechTask();
-}
+// void Head::speechTaskEntry(void* pvParameters) {
+// 	static_cast<Head*>(pvParameters) -> speechTask();
+// }
 
 void Head::cameraTask() {
 	TickType_t lastUnblock = xTaskGetTickCount();
@@ -318,38 +316,48 @@ void Head::cameraTask() {
 void Head::microphoneTask() {
 	constexpr size_t bufferSize = sizeof(audioBuffer_);
 	while(1) {
+		// Serial.printf("Free heap: %u\n", ESP.getFreeHeap()); // Use this to check for memory leaks
 		this -> updateAudioBuffer(bufferSize);
 		this -> sendAudio(bufferSize);
 	}
 }
 
-void Head::receiveSpeechTask() {
-	TtsChunk chunk;
-	while(1) {
-		int packetSize = udp_.parsePacket();
-		if (packetSize > 0) {
-			Serial.println("packet received");
-			int16_t len = udp_.read(chunk.data, TTS_BUFFER_SIZE);
-			if (len <= 0) {
-				Serial.println("read failed");
-			}
-			else {
-				Serial.println(packetSize);
-				chunk.length = static_cast<size_t>(len);
-				if (xQueueSend(ttsQueue_, &chunk, 0) != pdTRUE) {
-					Serial.println("queue full, dropped");
-				}
-			}
-		}
-	}
-}
+// void Head::receiveSpeechTask() {
+// 	Serial.println("receiveSpeechTask initialized");
+// 	TtsChunk chunk;
+// 	while(1) {
+// 		int packetSize = udp_.parsePacket();
+// 		if (packetSize > 0) {
+// 			Serial.println("packet received");
+// 			int16_t len = udp_.read(chunk.data, TTS_BUFFER_SIZE);
+// 			if (len <= 0) {
+// 				Serial.println("read failed");
+// 			}
+// 			else {
+// 				Serial.println(packetSize);
+// 				chunk.length = static_cast<size_t>(len);
+// 				if (xQueueSend(ttsQueue_, &chunk, portMAX_DELAY) != pdTRUE) {
+// 					Serial.println("queue full, dropped");
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
-void Head::speechTask() {
-	TtsChunk chunk;
-	while(1){
-		if (xQueueReceive(ttsQueue_, &chunk, portMAX_DELAY) == pdTRUE) {
-            i2sSpeaker_.write(chunk.data, chunk.length);
-        }
-		Serial.println("test");
-	}
-}
+// void Head::speechTask() {
+// 	TtsChunk chunk;
+// 	static uint32_t lastWrite = millis();
+// 	while(1){
+// 		if (xQueueReceive(ttsQueue_, &chunk, portMAX_DELAY) == pdTRUE) {
+// 			Serial.printf("writing chunk len=%u\n", chunk.length);
+// 			Serial.printf("gap since last write: %lu ms\n", millis() - lastWrite);
+// 			lastWrite = millis();
+// 			size_t written = i2sSpeaker_.write(chunk.data, chunk.length);
+// 			if (written < chunk.length) {
+// 				Serial.printf("i2s write truncated: %u/%u\n", written, chunk.length);
+// 			}
+//         }
+// 		Serial.println("speech");
+// 		Serial.printf("queue depth: %u\n", uxQueueMessagesWaiting(ttsQueue_));
+// 	}
+// }
