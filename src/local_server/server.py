@@ -75,29 +75,9 @@ def transcribe(model, queue1, queue2):
         else:
             buffer.extend(chunk)
 
-def textToSpeech(queue, socketUDP):
-    espeak_ng.initialize(output=espeak_ng.espeak_AUDIO_OUTPUT.AUDIO_OUTPUT_RETRIEVAL)
-
-    wf = wave.open("debug_tts.wav", "wb")
-    wf.setnchannels(1)
-    wf.setsampwidth(2)
-    wf.setframerate(22050)
-
-    def callback(wav, num_samples, event):
-        try:
-            if wav is not None and num_samples > 0:
-                data = ctypes.string_at(wav, num_samples * 2)
-                wf.writeframes(data)  # capture exactly what gets sent
-                sent = socketUDP.send(data)
-                if sent <= 0:
-                    print("bytes not sent")
-        except Exception as e:
-            print(f"callback error: {e}")
-        return 0
-    
-    espeak_ng.set_synth_callback(callback)
+def sendLLMResponse(queue, socketUDP):
     while True:
-        espeak_ng.synth(queue.get())
+        socketUDP.send(queue.get().encode())
 
 def detectObjects(model, queue):
     while True:

@@ -12,8 +12,9 @@ print("Server Initializing")
 audioQ = multiprocessing.Queue()
 frameQ = multiprocessing.Queue()
 ttsQ   = multiprocessing.Queue()
-socketUDP = initAudioServer(ADDRESS, PORT)
 socketTCP = initVideoServer(ADDRESS, PORT)
+socketUDP = initAudioServer(ADDRESS, PORT)
+
 
 transcriptionModel = Model(
     model = 'small.en', 
@@ -34,9 +35,9 @@ thread1 = threading.Thread(target=runAudioServer, args=(socketUDP, audioQ))
 thread2 = threading.Thread(target=runVideoServer, args=(socketTCP, frameQ))
 thread3 = threading.Thread(target=transcribe, args=(transcriptionModel, audioQ, ttsQ))
 thread4 = threading.Thread(target=detectObjects, args=(objectDetectionModel, frameQ))
-thread5 = threading.Thread(target=textToSpeech, args=(ttsQ, socketUDP))
+thread5 = threading.Thread(target=sendLLMResponse, args=(ttsQ, socketUDP))
 thread1.start()
 thread2.start()
 thread3.start()
-# thread4.start()
+thread4.start()
 thread5.start()
