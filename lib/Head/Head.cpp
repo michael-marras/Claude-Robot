@@ -1,23 +1,27 @@
 #include "Head.hpp"
 #include "../../include/secrets.h"
 
-constexpr uint16_t SIXTEEN_KHZ      = 16000;
+constexpr double SAM_GAIN = 0.2;
+
 constexpr uint8_t  PDM_MIC_DATA_PIN = 41;
 constexpr uint8_t  PDM_MIC_CLK_PIN  = 42;
-constexpr uint32_t TWENTY_MHZ       = 20000000;
-constexpr uint16_t PORT             = 9997;
 constexpr uint8_t  CPU_CORE         = 1;
 constexpr uint8_t  HEADER_SIZE      = 4;
+
+constexpr uint8_t  MIC_TASK_PRIORITY = 4;
+constexpr uint8_t  RCV_TASK_PRIORITY = 3;
+constexpr uint8_t  CAM_TASK_PRIORITY = 3;
+
+constexpr uint16_t SIXTEEN_KHZ  	= 16000;
 constexpr uint16_t CAMERA_DELAY     = 1000;
-constexpr uint8_t  TTS_QUEUE_LENGTH = 32;
+constexpr uint16_t TCP_RECONN_DELAY = 500;
+constexpr uint16_t PORT         	= 9997;
 
-constexpr uint8_t  MIC_TASK_PRIORITY    = 4;
-constexpr uint8_t  RCV_TASK_PRIORITY    = 3;
-constexpr uint8_t  CAM_TASK_PRIORITY    = 3;
+constexpr uint32_t MIC_TASK_STACK_BYTES = 4096;
+constexpr uint32_t RCV_TASK_STACK_BYTES = 8192;
+constexpr uint32_t CAM_TASK_STACK_BYTES = 8192;
 
-constexpr uint32_t MIC_TASK_STACK_BYTES    = 4096;
-constexpr uint32_t RCV_TASK_STACK_BYTES    = 8192;
-constexpr uint32_t CAM_TASK_STACK_BYTES    = 8192;
+constexpr uint32_t TWENTY_MHZ = 20000000;
 
 constexpr const char* MESSAGE_INIT_SUCCESS = "Head Initialized Successfully";
 constexpr const char* MESSAGE_INIT_ERROR   = "Error initalizing head";
@@ -125,7 +129,7 @@ bool Head::initSAM() {
 	if (!samOut_->SetPinout(D0, D1, D2)) {
 		return false;
 	}
-
+	samOut_->SetGain(SAM_GAIN);
 	sam_ = new ESP8266SAM();
 	return true;
 }
@@ -282,8 +286,9 @@ void Head::receiveSpeechTaskEntry(void* pvParameters) {
 void Head::cameraTask() {
 	TickType_t lastUnblock = xTaskGetTickCount();
 	while(1) {
-		if (!tcp_.connected()) {
+		while (!tcp_.connected()) {
 			tcp_.connect(IPAddress(IP_ADDRESS), PORT);
+			vTaskDelay(pdMS_TO_TICKS(TCP_RECONN_DELAY));
 		}
 
 		camera_fb_t* frameBuffer = this -> getFrameBuffer();
@@ -315,6 +320,7 @@ void Head::receiveSpeechTask() {
 			}
 			else {
 				Serial.println(packetSize);
+				Serial.println("speech");
 				chunk.length = static_cast<size_t>(len);
 
 				size_t copyLen = (chunk.length < TTS_BUFFER_SIZE) ? chunk.length : TTS_BUFFER_SIZE;

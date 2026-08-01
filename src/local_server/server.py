@@ -36,7 +36,6 @@ def initVideoServer(address, port):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((address, port))
     server.listen(1)
-    server, addr = server.accept()
     return server
 
 def conditionAudio(audio):
@@ -111,8 +110,16 @@ def runAudioServer(socketUDP, queue):
 def runVideoServer(socketTCP, queue):
     mjpegFile = open("./out/video/test.mjpeg", "wb")
     while True:
-        lengthBytes = recvExact(socketTCP, 4)
-        frameLen = int.from_bytes(lengthBytes, byteorder="little")
-        frame = recvExact(socketTCP, frameLen)
-        queue.put_nowait(frame)
-        mjpegFile.write(frame)
+        clientSocket, addr = socketTCP.accept()
+        print(f"video client connected: {addr}")
+        while True:
+            try:
+                lengthBytes = recvExact(clientSocket, 4)
+                frameLen = int.from_bytes(lengthBytes, byteorder="little")
+                frame = recvExact(clientSocket, frameLen)
+                queue.put_nowait(frame)
+                mjpegFile.write(frame)
+            except (ConnectionError, OSError) as e:
+                print(f"video socket dropped: {e}")
+                clientSocket.close()
+                break

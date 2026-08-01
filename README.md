@@ -85,6 +85,11 @@ test/test_head_head/test_head_head.cpp:22:test_init_valid:PASS
 OK
 ```
 
+5. If either of these fail, check to see if device is connected. If its not, you need to hold the boot button while inserting your devices usb. Release the boot button around 2 seconds after insertion.
+```bash
+pio device list
+```
+
 ### Test output files
 - the s3 will deliver audio and video data to the server and may write to files in /out
 ```bash
