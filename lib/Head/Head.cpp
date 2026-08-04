@@ -1,7 +1,7 @@
 #include "Head.hpp"
 #include "../../include/secrets.h"
 
-constexpr double SAM_GAIN = 0.2;
+constexpr double SAM_GAIN = 0.1;
 
 constexpr uint8_t  PDM_MIC_DATA_PIN = 41;
 constexpr uint8_t  PDM_MIC_CLK_PIN  = 42;
@@ -16,12 +16,19 @@ constexpr uint16_t SIXTEEN_KHZ  	= 16000;
 constexpr uint16_t CAMERA_DELAY     = 1000;
 constexpr uint16_t TCP_RECONN_DELAY = 500;
 constexpr uint16_t PORT         	= 9997;
+constexpr uint16_t SHUTDOWN_WAIT_MS = 1000;
 
 constexpr uint32_t MIC_TASK_STACK_BYTES = 4096;
 constexpr uint32_t RCV_TASK_STACK_BYTES = 8192;
 constexpr uint32_t CAM_TASK_STACK_BYTES = 8192;
 
 constexpr uint32_t TWENTY_MHZ = 20000000;
+
+constexpr EventBits_t DEINIT_BIT      = BIT0;
+constexpr EventBits_t CAM_DONE_BIT    = BIT1;
+constexpr EventBits_t MIC_DONE_BIT    = BIT2;
+constexpr EventBits_t SPEECH_DONE_BIT = BIT3;
+constexpr EventBits_t ALL_DONE_BITS = CAM_DONE_BIT | MIC_DONE_BIT | SPEECH_DONE_BIT;
 
 constexpr const char* MESSAGE_INIT_SUCCESS = "Head Initialized Successfully";
 constexpr const char* MESSAGE_INIT_ERROR   = "Error initalizing head";
@@ -33,6 +40,14 @@ constexpr const char* MESSAGE_I2S_INIT_ERROR    = "Failed to initialize I2S!";
 constexpr const char* MESSAGE_MIC_DEINIT_ERROR  = "Camera failed to deinit";
 constexpr const char* MESSAGE_CAM_DEINIT_ERROR  = "Camera failed to deinit";
 constexpr const char* MESSAGE_RETURN_FB_ERROR   = "Failed to return framebuffer";
+constexpr const char* MESSAGE_RECV_SPEECH_INIT  = "ReceiveSpeechTask initialized";
+constexpr const char* MESSAGE_PACKET_RECVD      = "Packet received";
+constexpr const char* MESSAGE_UDP_READ_FAILED   = "Read failed";
+constexpr const char* MESSAGE_ROBOT_SPEAKING    = "Speech Produced";
+constexpr const char* MESSAGE_HEADER_TRUNCATED  = "Length header truncated";
+constexpr const char* MESSAGE_FRAME_TRUNCATED   = "Frame truncated";
+constexpr const char* MESSAGE_SPEECH_FAILED     = "Speech failed to produce";
+constexpr const char* MESSAGE_GROUP_FAIL        = "The event group was not created because there was insufficient heap available";
 
 bool Head::init() {
 	Serial.println(MESSAGE_INIT);
@@ -42,12 +57,20 @@ bool Head::init() {
 		Serial.println(MESSAGE_INIT_ERROR);
 		return false;
 	}
-	else if(!this -> initMicrophone()) {
+
+	if(!this -> initMicrophone()) {
 		Serial.println(MESSAGE_INIT_ERROR);
 		return false;
 	}
-	else if (!this->initSAM()) {
+
+	if (!this->initSAM()) {
 		Serial.println(MESSAGE_INIT_ERROR);
+		return false;
+	}
+
+	eventGroup_ = xEventGroupCreate();
+	if (eventGroup_ == NULL) {
+		Serial.println(MESSAGE_GROUP_FAIL);
 		return false;
 	}
 
@@ -62,6 +85,18 @@ bool Head::init() {
 bool Head::deinit() {
 	Serial.println(MESSAGE_DEINIT);
 
+	if (eventGroup_ != nullptr && tasksStarted_) {
+		xEventGroupSetBits(eventGroup_, DEINIT_BIT);
+
+		EventBits_t bits = xEventGroupWaitBits(
+			eventGroup_,
+			ALL_DONE_BITS,
+			pdFALSE,                            
+			pdTRUE,                              
+			portMAX_DELAY 
+		);
+	}
+
 	if (esp_camera_deinit() != ESP_OK) {
 		Serial.println(MESSAGE_CAM_DEINIT_ERROR);
 		return false;
@@ -72,8 +107,18 @@ bool Head::deinit() {
 		return false;
 	}
 
+	if (samOut_ != nullptr) {
+		samOut_->stop();
+		delete samOut_;
+		samOut_ = nullptr;
+	}
+	delete sam_;
+	sam_ = nullptr;
+
 	udp_.stop();
 	tcp_.stop();
+
+	headInitialized_ = false;
 	return true;
 }
 
@@ -193,7 +238,7 @@ void Head::startTasks() {
 	);
 
 	xTaskCreatePinnedToCore(
-		receiveSpeechTaskEntry, 
+		recvSpeechTaskEntry, 
 		"receiving speech from companion code",
 		RCV_TASK_STACK_BYTES,
 		this,
@@ -211,6 +256,8 @@ void Head::startTasks() {
 		nullptr,
 		CPU_CORE
 	);
+
+	tasksStarted_ = true;
 }
 
 void Head::printSample(int16_t sample) {
@@ -221,6 +268,23 @@ void Head::printSample(int16_t sample) {
 
 void Head::printFrame(camera_fb_t* frameBuffer) {
 	Serial.write(frameBuffer -> buf, frameBuffer -> len);
+}
+
+bool Head::speak(TtsChunk chunk) {
+	checkInitialized();
+
+	memcpy(ttsText_, chunk.data, chunk.length);
+	ttsText_[chunk.length] = '\0';
+
+	bool success = sam_->Say(samOut_, ttsText_);
+	samOut_->flush();
+	samOut_->stop();
+
+	return success;
+}
+
+const char* Head::getTtsText() {
+	return ttsText_;
 }
 
 camera_fb_t* Head::getFrameBuffer() {
@@ -253,12 +317,12 @@ void Head::sendAudio(size_t size) {
 void Head::sendVideo(camera_fb_t* frameBuffer) {
 	uint32_t len = frameBuffer->len;
 	if (tcp_.write(reinterpret_cast<uint8_t*>(&len), HEADER_SIZE) < HEADER_SIZE) {
-		Serial.println("length header truncated");
+		Serial.println(MESSAGE_HEADER_TRUNCATED);
 		tcp_.stop();
 		return;
 	}
 	if(tcp_.write(frameBuffer -> buf, frameBuffer -> len) < frameBuffer -> len) {
-		Serial.println("frame truncated");
+		Serial.println(MESSAGE_FRAME_TRUNCATED);
 		tcp_.stop();
 		return;
 	}
@@ -271,6 +335,10 @@ void Head::checkInitialized() {
 	}
 }
 
+bool Head::shutdownRequested() {
+	return (xEventGroupGetBits(eventGroup_) & DEINIT_BIT) != 0;
+}
+
 void Head::cameraTaskEntry(void* pvParameters) {
 	static_cast<Head*>(pvParameters) -> cameraTask(); 
 }
@@ -279,14 +347,14 @@ void Head::microphoneTaskEntry(void* pvParameters) {
 	static_cast<Head*>(pvParameters) -> microphoneTask(); 
 }
 
-void Head::receiveSpeechTaskEntry(void* pvParameters) {
-	static_cast<Head*>(pvParameters) -> receiveSpeechTask(); 
+void Head::recvSpeechTaskEntry(void* pvParameters) {
+	static_cast<Head*>(pvParameters) -> recvSpeechTask(); 
 }
 
 void Head::cameraTask() {
 	TickType_t lastUnblock = xTaskGetTickCount();
-	while(1) {
-		while (!tcp_.connected()) {
+	while(!shutdownRequested()) {
+		while (!tcp_.connected() && !shutdownRequested()) {
 			tcp_.connect(IPAddress(IP_ADDRESS), PORT);
 			vTaskDelay(pdMS_TO_TICKS(TCP_RECONN_DELAY));
 		}
@@ -296,41 +364,46 @@ void Head::cameraTask() {
 		this -> returnFrameBuffer(frameBuffer);
 		xTaskDelayUntil(&lastUnblock, pdMS_TO_TICKS(CAMERA_DELAY));
 	}
+
+	xEventGroupSetBits(eventGroup_, CAM_DONE_BIT);
+	vTaskDelete(nullptr);
 }
 
 void Head::microphoneTask() {
 	constexpr size_t bufferSize = sizeof(audioBuffer_);
-	while(1) {
+	while(!shutdownRequested()) {
 		// Serial.printf("Free heap: %u\n", ESP.getFreeHeap()); // Use this to check for memory leaks
 		this -> updateAudioBuffer(bufferSize);
 		this -> sendAudio(bufferSize);
 	}
+
+	xEventGroupSetBits(eventGroup_, MIC_DONE_BIT);
+	vTaskDelete(nullptr);
 }
 
-void Head::receiveSpeechTask() {
-	Serial.println("receiveSpeechTask initialized");
+void Head::recvSpeechTask() {
+	Serial.println(MESSAGE_RECV_SPEECH_INIT);
 	TtsChunk chunk;
-	while(1) {
+	while(!shutdownRequested()) {
 		int packetSize = udp_.parsePacket();
 		if (packetSize > 0) {
-			Serial.println("packet received");
+			Serial.println(MESSAGE_PACKET_RECVD);
 			int16_t len = udp_.read(chunk.data, TTS_BUFFER_SIZE);
 			if (len <= 0) {
-				Serial.println("read failed");
+				Serial.println(MESSAGE_UDP_READ_FAILED);
 			}
 			else {
 				Serial.println(packetSize);
-				Serial.println("speech");
+				Serial.println(MESSAGE_ROBOT_SPEAKING);
 				chunk.length = static_cast<size_t>(len);
 
-				size_t copyLen = (chunk.length < TTS_BUFFER_SIZE) ? chunk.length : TTS_BUFFER_SIZE;
-				memcpy(ttsText_, chunk.data, copyLen);
-				ttsText_[copyLen] = '\0';
-
-				sam_->Say(samOut_, ttsText_);
-				samOut_->flush();
-				samOut_->stop();
+				if (!speak(chunk)) {
+					Serial.println(MESSAGE_SPEECH_FAILED);
+				}
 			}
 		}
 	}
+
+	xEventGroupSetBits(eventGroup_, SPEECH_DONE_BIT);
+	vTaskDelete(nullptr);
 }

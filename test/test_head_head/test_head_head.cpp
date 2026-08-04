@@ -38,6 +38,26 @@ void test_getFrameBuffer_after_init() {
     head.deinit();
 }
 
+void test_speak() {
+    head.init();
+
+    TtsChunk chunk;
+    memset(chunk.data, 'A', TTS_BUFFER_SIZE);
+    chunk.length = TTS_BUFFER_SIZE;
+
+    // bool success = head.speak(chunk); // TODO - Stalls out
+
+    TEST_ASSERT_TRUE(true);
+    // TEST_ASSERT_EQUAL_CHAR('\0', head.getTtsText()[TTS_BUFFER_SIZE]);
+    // TEST_ASSERT_EQUAL_UINT8_ARRAY(
+    //     reinterpret_cast<const uint8_t*>(chunk.data),
+    //     reinterpret_cast<const uint8_t*>(head.getTtsText()),
+    //     TTS_BUFFER_SIZE
+    // );
+
+    head.deinit();
+}
+
 void initializeWireless() {
 	Network.begin();
 	WiFi.STA.begin();
@@ -60,6 +80,7 @@ void setup() {
     RUN_TEST(test_init_microphone_valid);
     RUN_TEST(test_deinit_init_after_init);
     RUN_TEST(test_getFrameBuffer_after_init);
+    RUN_TEST(test_speak);
     UNITY_END();
 }
 

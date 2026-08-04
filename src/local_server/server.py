@@ -3,8 +3,6 @@ import wave
 import numpy as np 
 import webrtcvad
 import cv2
-import espeak_ng
-import ctypes
 
 from ultralytics import YOLO
 
@@ -17,7 +15,8 @@ WAV_FRAME_RATE_HZ  = 16000
 SILENCE_LIMIT      = 20  
 UDP_BYTES_RECV     = 320
 TCP_BYTES_RECV     = 4096
-HEAD_ADDR          = "192.168.86.22"
+HEAD_ADDR          = "192.168.86.25"
+FIVE_SECONDS       = 5
 
 def openWavFile(file_path):
     wavFile = wave.open(file_path, "wb")
@@ -87,9 +86,6 @@ def detectObjects(model, queue):
             verbose=True,
             conf=0.5
         )
-
-        # for result in results:
-        #     print(result.verbose())
     
 def runAudioServer(socketUDP, queue):
     wavFile = openWavFile(WAV_PATH)
@@ -111,13 +107,14 @@ def runVideoServer(socketTCP, queue):
     mjpegFile = open("./out/video/test.mjpeg", "wb")
     while True:
         clientSocket, addr = socketTCP.accept()
+        clientSocket.settimeout(FIVE_SECONDS)
         print(f"video client connected: {addr}")
         while True:
             try:
                 lengthBytes = recvExact(clientSocket, 4)
                 frameLen = int.from_bytes(lengthBytes, byteorder="little")
                 frame = recvExact(clientSocket, frameLen)
-                queue.put_nowait(frame)
+                queue.put(frame)
                 mjpegFile.write(frame)
             except (ConnectionError, OSError) as e:
                 print(f"video socket dropped: {e}")

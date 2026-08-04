@@ -61,7 +61,9 @@ class Head {
         bool deinitMicrophone();
 
         /**
+         * @brief Initialize the SAM text synthesizer
          * 
+         * @return true on success
          */
         bool initSAM();
 
@@ -88,6 +90,16 @@ class Head {
          * 
          */
         void printFrame(camera_fb_t* frameBuffer);
+
+        /**
+         * @brief Produce SAM speech
+         */
+        bool speak(TtsChunk chunk);
+
+        /**
+         * @brief Get TtsText_ buffer
+         */
+        const char* getTtsText();
 
         /**
          * @brief Returns a pointer to the buffer containing the jpeg frames capture by the camera
@@ -127,16 +139,24 @@ class Head {
          */
         void checkInitialized();
 
+        /**
+         * @brief Checks whether shutdown has been requested via the event group.
+         * @return true if ABORT_BIT is currently set.
+         */
+        bool shutdownRequested();
+
     private:
         bool headInitialized_              = false;
+        bool tasksStarted_                 = false;
         char audioBuffer_[NUM_BYTES]       = {}; 
         char ttsText_[TTS_BUFFER_SIZE + 1] = {};
-
-        I2SClass        i2S_; 
-        AudioOutputI2S* samOut_;
-        ESP8266SAM*     sam_;
-        NetworkUDP      udp_;
-        NetworkClient   tcp_;
+        
+        EventGroupHandle_t eventGroup_;
+        I2SClass           i2S_; 
+        AudioOutputI2S*    samOut_;
+        ESP8266SAM*        sam_;
+        NetworkUDP         udp_;
+        NetworkClient      tcp_;
 
         /**
          * @brief Entry point for camera task
@@ -157,7 +177,7 @@ class Head {
          * 
          * @param pvParameters Pointer that will be used as the parameter for the task being created
          */
-        static void receiveSpeechTaskEntry(void* pvParameters);
+        static void recvSpeechTaskEntry(void* pvParameters);
 
         /**
          * @brief Task handled by scheduler in charge of capturing camera data and sending it to the companion server
@@ -172,5 +192,5 @@ class Head {
         /**
          * @brief Task handled by scheduler in charge of receiving commands from the companion server
          */
-        void receiveSpeechTask();
+        void recvSpeechTask();
 };
