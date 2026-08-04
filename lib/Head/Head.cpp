@@ -1,7 +1,7 @@
 #include "Head.hpp"
 #include "../../include/secrets.h"
 
-constexpr double SAM_GAIN = 0.1;
+constexpr double SAM_GAIN = 0.5;
 
 constexpr uint8_t  PDM_MIC_DATA_PIN = 41;
 constexpr uint8_t  PDM_MIC_CLK_PIN  = 42;
@@ -15,6 +15,7 @@ constexpr uint8_t  CAM_TASK_PRIORITY = 3;
 constexpr uint16_t SIXTEEN_KHZ  	= 16000;
 constexpr uint16_t CAMERA_DELAY     = 1000;
 constexpr uint16_t TCP_RECONN_DELAY = 500;
+constexpr uint16_t MIC_YIELD_DELAY  = 500;
 constexpr uint16_t PORT         	= 9997;
 constexpr uint16_t SHUTDOWN_WAIT_MS = 1000;
 
@@ -28,6 +29,7 @@ constexpr EventBits_t DEINIT_BIT      = BIT0;
 constexpr EventBits_t CAM_DONE_BIT    = BIT1;
 constexpr EventBits_t MIC_DONE_BIT    = BIT2;
 constexpr EventBits_t SPEECH_DONE_BIT = BIT3;
+constexpr EventBits_t MIC_ALLOWED_BIT = BIT4;
 constexpr EventBits_t ALL_DONE_BITS = CAM_DONE_BIT | MIC_DONE_BIT | SPEECH_DONE_BIT;
 
 constexpr const char* MESSAGE_INIT_SUCCESS = "Head Initialized Successfully";
@@ -48,6 +50,7 @@ constexpr const char* MESSAGE_HEADER_TRUNCATED  = "Length header truncated";
 constexpr const char* MESSAGE_FRAME_TRUNCATED   = "Frame truncated";
 constexpr const char* MESSAGE_SPEECH_FAILED     = "Speech failed to produce";
 constexpr const char* MESSAGE_GROUP_FAIL        = "The event group was not created because there was insufficient heap available";
+constexpr const char* MESSAGE_DEINIT_SUCC       = "Head Deinitialized successfully";
 
 bool Head::init() {
 	Serial.println(MESSAGE_INIT);
@@ -73,6 +76,7 @@ bool Head::init() {
 		Serial.println(MESSAGE_GROUP_FAIL);
 		return false;
 	}
+	xEventGroupSetBits(eventGroup_, MIC_ALLOWED_BIT);
 
 	udp_.begin(PORT);
 	tcp_.connect(IPAddress(IP_ADDRESS), PORT);
@@ -119,6 +123,7 @@ bool Head::deinit() {
 	tcp_.stop();
 
 	headInitialized_ = false;
+	Serial.println(MESSAGE_DEINIT_SUCC);
 	return true;
 }
 
@@ -271,7 +276,7 @@ void Head::printFrame(camera_fb_t* frameBuffer) {
 }
 
 bool Head::speak(TtsChunk chunk) {
-	checkInitialized();
+	xEventGroupClearBits(eventGroup_, MIC_ALLOWED_BIT);
 
 	memcpy(ttsText_, chunk.data, chunk.length);
 	ttsText_[chunk.length] = '\0';
@@ -280,6 +285,7 @@ bool Head::speak(TtsChunk chunk) {
 	samOut_->flush();
 	samOut_->stop();
 
+	xEventGroupSetBits(eventGroup_, MIC_ALLOWED_BIT);
 	return success;
 }
 
@@ -372,6 +378,13 @@ void Head::cameraTask() {
 void Head::microphoneTask() {
 	constexpr size_t bufferSize = sizeof(audioBuffer_);
 	while(!shutdownRequested()) {
+		EventBits_t bits = xEventGroupWaitBits(
+			eventGroup_,
+			MIC_ALLOWED_BIT,
+			pdFALSE,                            
+			pdTRUE,                              
+			pdMS_TO_TICKS(MIC_YIELD_DELAY));
+
 		// Serial.printf("Free heap: %u\n", ESP.getFreeHeap()); // Use this to check for memory leaks
 		this -> updateAudioBuffer(bufferSize);
 		this -> sendAudio(bufferSize);

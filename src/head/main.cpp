@@ -31,12 +31,6 @@ void setup() {
 	if(head.init()) {
 		head.startTasks();
 	}
-
-	delay(1000);
-
-	if (!head.deinit()) {
-		Serial.println("deinit failed");
-	}
 }
 
 void loop() {}
