@@ -1,7 +1,7 @@
 #include "Head.hpp"
 #include "../../include/secrets.h"
 
-constexpr double SAM_GAIN = 0.5;
+constexpr double SAM_GAIN = 0.3;
 
 constexpr uint8_t  PDM_MIC_DATA_PIN = 41;
 constexpr uint8_t  PDM_MIC_CLK_PIN  = 42;
@@ -13,7 +13,7 @@ constexpr uint8_t  RCV_TASK_PRIORITY = 3;
 constexpr uint8_t  CAM_TASK_PRIORITY = 3;
 
 constexpr uint16_t SIXTEEN_KHZ  	= 16000;
-constexpr uint16_t CAMERA_DELAY     = 1000;
+constexpr uint16_t CAMERA_DELAY     = 2000;
 constexpr uint16_t TCP_RECONN_DELAY = 500;
 constexpr uint16_t MIC_YIELD_DELAY  = 500;
 constexpr uint16_t PORT         	= 9997;
@@ -281,12 +281,22 @@ bool Head::speak(TtsChunk chunk) {
 	memcpy(ttsText_, chunk.data, chunk.length);
 	ttsText_[chunk.length] = '\0';
 
-	bool success = sam_->Say(samOut_, ttsText_);
-	samOut_->flush();
-	samOut_->stop();
+	char* sentence = strtok(ttsText_, ".,:;!?");
+	while (sentence) {
+		if (!sam_->Say(samOut_, sentence)) {
+			samOut_->flush();
+			samOut_->stop();
+			xEventGroupSetBits(eventGroup_, MIC_ALLOWED_BIT);
+			return false;
+		}
 
+		samOut_->flush();
+		samOut_->stop();
+		sentence = strtok(nullptr, ".,:;!?");
+	}
+	
 	xEventGroupSetBits(eventGroup_, MIC_ALLOWED_BIT);
-	return success;
+	return true;
 }
 
 const char* Head::getTtsText() {

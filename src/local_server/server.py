@@ -3,6 +3,8 @@ import wave
 import numpy as np 
 import webrtcvad
 import cv2
+from RobotAgent import*
+import os
 
 from ultralytics import YOLO
 
@@ -15,10 +17,11 @@ WAV_FRAME_RATE_HZ  = 16000
 SILENCE_LIMIT      = 20  
 UDP_BYTES_RECV     = 320
 TCP_BYTES_RECV     = 4096
-HEAD_ADDR          = "192.168.86.25"
+HEAD_ADDR          = "192.168.86.30"
 FIVE_SECONDS       = 5
 
 def openWavFile(file_path):
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     wavFile = wave.open(file_path, "wb")
     wavFile.setnchannels(NUM_CHANNELS)
     wavFile.setsampwidth(SAMPLE_WIDTH_BYTES)
@@ -73,10 +76,6 @@ def transcribe(model, queue1, queue2):
         else:
             buffer.extend(chunk)
 
-def sendLLMResponse(queue, socketUDP):
-    while True:
-        socketUDP.send(queue.get().encode())
-
 def detectObjects(model, queue):
     while True:
         frame = conditionFrame(queue.get())
@@ -120,3 +119,18 @@ def runVideoServer(socketTCP, queue):
                 print(f"video socket dropped: {e}")
                 clientSocket.close()
                 break
+
+def robotAgentThread(queue, socketUDP):
+    robotAgent = RobotAgent()
+    testPrompt = "Well hello there. I'm Sam, and here's a long sentence for you. I think that one of the most fascinating things is that the quick brown fox jumped over the wall"
+    while True:
+        response = robotAgent.sendHumanSpeech(speech=queue.get())
+        print(response)
+        packetSize = socketUDP.send(response.encode())
+        print(packetSize)
+        if  packetSize < len(response):
+            print("full response not sent")
+
+        # TESTING
+        # socketUDP.send(testPrompt.encode())
+        # time.sleep(10)

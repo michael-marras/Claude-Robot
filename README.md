@@ -6,6 +6,7 @@ processed data for claude to direct outputs of the robot
 
 ## Project Status
 - In Progress
+![Robot Head](docs/images/robot-progress-001.jpg)
 
 ## Architecture
 
@@ -26,8 +27,8 @@ processed data for claude to direct outputs of the robot
 ### Technologies Used
 - C++ (Arduino framework)
 - PlatformIO (build/flash)
-- Ultralytics YOLOv11 (vision)
-- OpenAI Whisper (speech-to-text)
+- Ultralytics YOLO26 (vision)
+- OpenAI Pywhispercpp (speech-to-text)
 - Anthropic Claude API (reasoning + tool-calling)
 
 ### Flow of Data
