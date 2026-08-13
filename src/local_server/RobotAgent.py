@@ -136,7 +136,7 @@ class RobotAgent:
         return tool_results
 
     def convertBytesToJPEG(self, frame: bytes):
-        if frame is None:
+        if frame == bytes():
             raise RuntimeError("No camera frame received yet")
         return base64.b64encode(frame).decode("utf-8")
 

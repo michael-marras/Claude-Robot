@@ -5,8 +5,10 @@ This is a fully autonomous robot that utilizes computer vision, and speech-to-te
 processed data for claude to direct outputs of the robot
 
 ## Project Status
-- In Progress
+### In Progress
+### [Status Update Video 1](https://www.youtube.com/watch?v=OQdV4opSizM)
 ![Robot Head](docs/images/robot-progress-001.jpg)
+
 
 ## Architecture
 
