@@ -10,7 +10,7 @@ constexpr uint8_t  HEADER_SIZE      = 4;
 
 constexpr uint8_t  MIC_TASK_PRIORITY = 4;
 constexpr uint8_t  RCV_TASK_PRIORITY = 3;
-constexpr uint8_t  CAM_TASK_PRIORITY = 3;
+constexpr uint8_t  CAM_TASK_PRIORITY = 5;
 
 constexpr uint16_t SIXTEEN_KHZ  	= 16000;
 constexpr uint16_t CAMERA_DELAY     = 2000;
@@ -379,6 +379,7 @@ void Head::cameraTask() {
 		this -> sendVideo(frameBuffer);
 		this -> returnFrameBuffer(frameBuffer);
 		xTaskDelayUntil(&lastUnblock, pdMS_TO_TICKS(CAMERA_DELAY));
+		// Serial.println("Camera Task Finished");
 	}
 
 	xEventGroupSetBits(eventGroup_, CAM_DONE_BIT);
@@ -398,6 +399,7 @@ void Head::microphoneTask() {
 		// Serial.printf("Free heap: %u\n", ESP.getFreeHeap()); // Use this to check for memory leaks
 		this -> updateAudioBuffer(bufferSize);
 		this -> sendAudio(bufferSize);
+		// Serial.println("Mic Task Finished");
 	}
 
 	xEventGroupSetBits(eventGroup_, MIC_DONE_BIT);
@@ -425,6 +427,7 @@ void Head::recvSpeechTask() {
 				}
 			}
 		}
+		// Serial.println("Recv Task Finished");
 	}
 
 	xEventGroupSetBits(eventGroup_, SPEECH_DONE_BIT);

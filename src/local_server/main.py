@@ -31,11 +31,13 @@ objectDetectionModel = YOLO(
     verbose=False
 )
 
+frameStore = FrameStore()
+
 thread1 = threading.Thread(target=runAudioServer, args=(socketUDP, audioQ))
-thread2 = threading.Thread(target=runVideoServer, args=(socketTCP, frameQ))
+thread2 = threading.Thread(target=runVideoServer, args=(socketTCP, frameQ, frameStore))
 thread3 = threading.Thread(target=transcribe, args=(transcriptionModel, audioQ, ttsQ))
 thread4 = threading.Thread(target=detectObjects, args=(objectDetectionModel, frameQ))
-thread5 = threading.Thread(target=robotAgentThread, args=(ttsQ, socketUDP))
+thread5 = threading.Thread(target=robotAgentThread, args=(ttsQ, socketUDP, frameStore))
 thread1.start()
 thread2.start()
 thread3.start()

@@ -5,6 +5,7 @@ import webrtcvad
 import cv2
 from RobotAgent import*
 import os
+import threading
 
 from ultralytics import YOLO
 
@@ -17,8 +18,21 @@ WAV_FRAME_RATE_HZ  = 16000
 SILENCE_LIMIT      = 20  
 UDP_BYTES_RECV     = 320
 TCP_BYTES_RECV     = 4096
-HEAD_ADDR          = "192.168.86.30"
+HEAD_ADDR          = "192.168.86.28"
 FIVE_SECONDS       = 5
+
+class FrameStore:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._frame = bytes()
+
+    def setFrame(self, frame: bytes):
+        with self._lock:
+            self._frame = frame
+
+    def getFrame(self) -> bytes:
+        with self._lock:
+            return self._frame
 
 def openWavFile(file_path):
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -102,7 +116,7 @@ def runAudioServer(socketUDP, queue):
             if silentFrames == SILENCE_LIMIT:
                 queue.put(None)  # sentinel: utterance ended
 
-def runVideoServer(socketTCP, queue):
+def runVideoServer(socketTCP, queue, frameStore):
     mjpegFile = open("./out/video/test.mjpeg", "wb")
     while True:
         clientSocket, addr = socketTCP.accept()
@@ -113,6 +127,7 @@ def runVideoServer(socketTCP, queue):
                 lengthBytes = recvExact(clientSocket, 4)
                 frameLen = int.from_bytes(lengthBytes, byteorder="little")
                 frame = recvExact(clientSocket, frameLen)
+                frameStore.setFrame(frame)
                 queue.put(frame)
                 mjpegFile.write(frame)
             except (ConnectionError, OSError) as e:
@@ -120,10 +135,11 @@ def runVideoServer(socketTCP, queue):
                 clientSocket.close()
                 break
 
-def robotAgentThread(queue, socketUDP):
+def robotAgentThread(queue, socketUDP, frameStore):
     robotAgent = RobotAgent()
     testPrompt = "Well hello there. I'm Sam, and here's a long sentence for you. I think that one of the most fascinating things is that the quick brown fox jumped over the wall"
     while True:
+        robotAgent.updateSenses(frameStore.getFrame())
         response = robotAgent.sendHumanSpeech(speech=queue.get())
         print(response)
         packetSize = socketUDP.send(response.encode())
