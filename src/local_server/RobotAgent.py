@@ -28,9 +28,12 @@ TONE: a curious, matter-of-fact little robot — plain, direct, a bit playful, n
  at most ~18 words. If a moment invites it, you may say plainly that you're a robot run by a language model — no drama about it.
 """
 
-GET_FRAME_DESCRIPTION = "Get the most current camera frame available from the robot when necessary, and when object labels already given aren't enough" \
-" Some examples include if the user is " \
-"asking about a vision related question and you need a detailed image of what is infront of the camera to answer/complete a task"
+GET_FRAME_DESCRIPTION = (
+    "Get the most current camera frame available from the robot when necessary, "
+    "and when object labels already given aren't enough. Some examples include "
+    "if the user is asking about a vision-related question and you need a detailed "
+    "image of what is in front of the camera to answer/complete a task."
+)
 
 TOOLS = [
     {
@@ -55,14 +58,13 @@ class RobotAgent:
         conversation (list): Stores the conversation history.
         memory (list): Stores the robot's memory.
     """
-
     def __init__(self):
         self.client = Anthropic(
             api_key=os.getenv("CLAUDE_API_KEY"),
             )
         self.conversation = []
         self.memory = self.updateMemory()
-        self.latestFrame = bytes()
+        self.latest_frame = bytes()
 
     def sendHumanSpeech(self, speech: str) -> str:
         self.conversation.append({'role': 'user', 'content': speech})
@@ -74,7 +76,6 @@ class RobotAgent:
             messages=self.conversation,
             model="claude-haiku-4-5",
         )
-        
         if message.stop_reason == "tool_use":
             self.conversation.append({'role': 'assistant', 'content': message.content})
 
@@ -96,10 +97,10 @@ class RobotAgent:
 
         if len(self.conversation) > MAX_CONVERSTAION_SIZE:
             self.conversation.pop(0)
-
+            
         return bot_message
     
-    def updateMemory(self):
+    def updateMemory(self) -> str:
         '''
         Update the robotAgent instance's memory string from Robot's Diary
         '''
@@ -128,7 +129,7 @@ class RobotAgent:
                 "source": {
                     "type": "base64",
                     "media_type": "image/jpeg",
-                    "data": self.convertBytesToJPEG(self.latestFrame),
+                    "data": self.convertBytesToJPEG(self.latest_frame),
                 },
             }],
         })
@@ -140,6 +141,6 @@ class RobotAgent:
             raise RuntimeError("No camera frame received yet")
         return base64.b64encode(frame).decode("utf-8")
 
-
-    def updateSenses(self, latestFrame: bytes):
-        self.latestFrame = latestFrame
+    def updateSenses(self, latest_frame: bytes):
+        self.latest_frame = latest_frame
+        print("latest_frame updated")

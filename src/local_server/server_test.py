@@ -9,18 +9,18 @@ def test_sanity():
     assert 1 + 1 == 2
 
 def test_openWavFile():
-    wavFile = openWavFile(WAV_PATH)
+    wavFile = open_wav_file(WAV_PATH)
     assert(wavFile)
     assert(isinstance(wavFile, wave.Wave_write))
     wavFile.close()
 
-def test_conditionAudio():
+def test_condition_audio():
     audioBuffer = bytearray()
     for i in range(320):
         audioBuffer.extend(b'/x00')
-    conditionedAudio = conditionAudio(audioBuffer)
+    conditionedAudio = condition_audio(audioBuffer)
     assert(conditionedAudio.all())
 
 test_sanity()
 test_openWavFile()
-test_conditionAudio()
+test_condition_audio()

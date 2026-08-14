@@ -218,7 +218,7 @@ camera_config_t Head::initCameraConfig() {
 
 	// --- Image format ---
 	config.pixel_format = PIXFORMAT_JPEG;   // pre-compressed, forward as-is
-	config.frame_size   = FRAMESIZE_VGA; 
+	config.frame_size   = FRAMESIZE_QVGA; 
 	config.jpeg_quality = 12;               // 0–63, lower = better/bigger
 
 	// --- Frame buffers ---
