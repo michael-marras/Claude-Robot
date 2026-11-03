@@ -23,3 +23,7 @@ jobs:
           run: pio run -e head -e body
         - name: Static Code Analysis
           run: pio check -e head -e body --fail-on-defect=high --skip-packages
+        - name: Install server test dependencies
+          run: pip install anthropic numpy webrtcvad opencv-python ultralytics pywhispercpp pytest setuptools "setuptools<82"
+        - name: Run unit tests
+          run: pytest

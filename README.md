@@ -5,7 +5,10 @@ This is a fully autonomous robot that utilizes computer vision, and speech-to-te
 processed data for claude to direct outputs of the robot
 
 ## Project Status
-- In Progress
+### In Progress
+### [Status Update Video 1](https://www.youtube.com/watch?v=OQdV4opSizM)
+![Robot Head](docs/images/robot-progress-001.jpg)
+
 
 ## Architecture
 
@@ -26,8 +29,8 @@ processed data for claude to direct outputs of the robot
 ### Technologies Used
 - C++ (Arduino framework)
 - PlatformIO (build/flash)
-- Ultralytics YOLOv11 (vision)
-- OpenAI Whisper (speech-to-text)
+- Ultralytics YOLO26 (vision)
+- OpenAI Pywhispercpp (speech-to-text)
 - Anthropic Claude API (reasoning + tool-calling)
 
 ### Flow of Data
@@ -83,6 +86,11 @@ test/test_head_head/test_head_head.cpp:22:test_init_valid:PASS
 -----------------------
 2 Tests 0 Failures 0 Ignored 
 OK
+```
+
+5. If either of these fail, check to see if device is connected. If its not, you need to hold the boot button while inserting your devices usb. Release the boot button around 2 seconds after insertion.
+```bash
+pio device list
 ```
 
 ### Test output files

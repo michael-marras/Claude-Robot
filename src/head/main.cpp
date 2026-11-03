@@ -1,6 +1,7 @@
 #include "Head.hpp"
 #include "secrets.h"
 
+
 constexpr uint32_t BAUD = 9600;
 constexpr uint16_t FIVE_SECONDS = 5000;
 
@@ -15,12 +16,16 @@ void initializeWireless() {
 		delay(500);
 		Serial.print(".");
 	}
+
+	Serial.println();
+	Serial.print("IP address: ");
+	Serial.println(WiFi.STA.localIP());
 }
 
 void setup() {
 	delay(FIVE_SECONDS);
 	Serial.begin(BAUD);
-	
+
 	initializeWireless();
 
 	if(head.init()) {

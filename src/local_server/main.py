@@ -1,7 +1,3 @@
-import multiprocessing
-import threading
-from pywhispercpp.model import Model
-
 from server import *
 
 ADDRESS = '0.0.0.0'
@@ -12,8 +8,8 @@ print("Server Initializing")
 audioQ = multiprocessing.Queue()
 frameQ = multiprocessing.Queue()
 ttsQ   = multiprocessing.Queue()
-socketUDP = initAudioServer(ADDRESS, PORT)
-socketTCP = initVideoServer(ADDRESS, PORT)
+socketTCP = init_video_socket(ADDRESS, PORT)
+socketUDP = init_audio_socket(ADDRESS, PORT)
 
 transcriptionModel = Model(
     model = 'small.en', 
@@ -30,11 +26,13 @@ objectDetectionModel = YOLO(
     verbose=False
 )
 
-thread1 = threading.Thread(target=runAudioServer, args=(socketUDP, audioQ))
-thread2 = threading.Thread(target=runVideoServer, args=(socketTCP, frameQ))
+frame_store = FrameStore()
+
+thread1 = threading.Thread(target=run_audio_server, args=(socketUDP, audioQ))
+thread2 = threading.Thread(target=run_video_server, args=(socketTCP, frameQ, frame_store))
 thread3 = threading.Thread(target=transcribe, args=(transcriptionModel, audioQ, ttsQ))
-thread4 = threading.Thread(target=detectObjects, args=(objectDetectionModel, frameQ))
-thread5 = threading.Thread(target=textToSpeech, args=(ttsQ,))
+thread4 = threading.Thread(target=detect_objects, args=(objectDetectionModel, frameQ))
+thread5 = threading.Thread(target=robot_agent_thread, args=(ttsQ, socketUDP, frame_store))
 thread1.start()
 thread2.start()
 thread3.start()

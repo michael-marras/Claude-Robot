@@ -9,5 +9,5 @@ out/
 chunk.wav
 .pytest_cache/
 __pycache__/
-run/
+runs/
 yolo26x.pt
