@@ -8,10 +8,11 @@ speech and camera frames to a RobotAgent instance running in its own
 thread.
 '''
 import os
-import multiprocessing
+import multiprocessing as mp
 import threading
 import socket
 import wave
+import time
 import numpy as np
 import webrtcvad
 import cv2
@@ -29,7 +30,7 @@ WAV_FRAME_RATE_HZ  = 16000
 SILENCE_LIMIT      = 20
 UDP_BYTES_RECV     = 320
 TCP_BYTES_RECV     = 4096
-HEAD_ADDR          = "192.168.86.28"
+HEAD_ADDR          = "192.168.86.45"
 FIVE_SECONDS       = 5
 
 class FrameStore:
@@ -164,7 +165,7 @@ def recv_exact(sock: socket, n: int) -> bytes:
         buf.extend(chunk)
     return bytes(buf)
 
-def transcribe(model: Model, audio_queue: multiprocessing.Queue, text_queue: multiprocessing.Queue):
+def transcribe(model: Model, audio_queue: mp.Queue, text_queue: mp.Queue):
     '''
     Thread responsible for infering text from speech
 
@@ -186,7 +187,7 @@ def transcribe(model: Model, audio_queue: multiprocessing.Queue, text_queue: mul
         else:
             buffer.extend(chunk)
 
-def detect_objects(model: YOLO, jpeg_queue: multiprocessing.Queue):
+def detect_objects(model: YOLO, jpeg_queue: mp.Queue):
     '''
     Thread responsible for object detection
 
@@ -203,7 +204,7 @@ def detect_objects(model: YOLO, jpeg_queue: multiprocessing.Queue):
             conf=0.5
         )
 
-def run_audio_server(socket_udp: socket, audio_queue: multiprocessing.Queue):
+def run_audio_server(socket_udp: socket, audio_queue: mp.Queue):
     '''
     Thread to run local audio server
 
@@ -226,7 +227,7 @@ def run_audio_server(socket_udp: socket, audio_queue: multiprocessing.Queue):
             if silent_frames == SILENCE_LIMIT:
                 audio_queue.put(None)  # sentinel: utterance ended
 
-def run_video_server(socket_tcp: socket, jpeg_queue: multiprocessing.Queue, frame_store: FrameStore):
+def run_video_server(socket_tcp: socket, jpeg_queue: mp.Queue, frame_store: FrameStore):
     '''
     Thread to run local video server on
 
@@ -253,7 +254,7 @@ def run_video_server(socket_tcp: socket, jpeg_queue: multiprocessing.Queue, fram
                     client_socket.close()
                     break
 
-def robot_agent_thread(queue: multiprocessing.Queue, socket_udp: socket, frame_store: FrameStore):
+def robot_agent_thread(queue: mp.Queue, socket_udp: socket, frame_store: FrameStore):
     '''
     Thread to run the llm agent responsible for controlling the robot
 
@@ -263,19 +264,19 @@ def robot_agent_thread(queue: multiprocessing.Queue, socket_udp: socket, frame_s
         frame_store: The object to pull the latest jpeg frame from
     '''
     robot_agent = RobotAgent()
-    # test_prompt = ("Well hello there. I'm Sam, and here's a long sentence"
-    # "for you. I think that one of the most fascinating things is that the"
-    # " quick brown fox jumped over the wall")
+    test_prompt = ("Well hello there. I'm Sam, and here's a long sentence"
+    "for you. I think that one of the most fascinating things is that the"
+    " quick brown fox jumped over the wall")
     while True:
-        speech=queue.get()
-        robot_agent.updateSenses(frame_store.get_frame())
-        response = robot_agent.sendHumanSpeech(speech=speech)
-        print(response)
-        packet_size = socket_udp.send(response.encode())
-        print(packet_size)
-        if  packet_size < len(response):
-            print("full response not sent")
+        # speech=queue.get()
+        # robot_agent.updateSenses(frame_store.get_frame())
+        # response = robot_agent.sendHumanSpeech(speech=speech)
+        # print(response)
+        # packet_size = socket_udp.send(response.encode())
+        # print(packet_size)
+        # if  packet_size < len(response):
+        #     print("full response not sent")
 
         # TESTING
-        # socket_udp.send(test_prompt.encode())
-        # time.sleep(10)
+        socket_udp.send(test_prompt.encode())
+        time.sleep(10)
