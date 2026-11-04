@@ -1,7 +1,7 @@
 #include "Head.hpp"
 #include "../../include/secrets.h"
 
-constexpr double SAM_GAIN = 0.3;
+constexpr double SAM_GAIN = 3.0;
 
 constexpr uint8_t  PDM_MIC_DATA_PIN = 41;
 constexpr uint8_t  PDM_MIC_CLK_PIN  = 42;

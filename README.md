@@ -25,7 +25,17 @@ processed data for claude to direct outputs of the robot
 | Body | Electrolytic capacitor, 1000µF 25V (smooths servo current surges, prevents brownout) | https://www.amazon.com/Pieces-1000uf-Capacitor-Aluminum-Electrolytic/dp/B07R432MR2 |
 | Body | Silicone wire, 22AWG power/ground | https://www.amazon.com/StrivedayTMFlexible-Silicone-Electric-electronic-electrics/dp/B01LH1FR6M |
 | Body | Silicone wire, 30AWG signal | https://www.amazon.com/StrivedayTM-Flexible-Silicone-electronic-electrics/dp/B01KQ2JNLI |
-  
+
+### Pin Mapping
+
+| XIAO ESP32S3 Sense Pin | Connects To | NS4168 DAC AMP Pin |
+|--------------------------|:-----------:|----------------------|
+| D0                        | ──▶         | BCLK                  |
+| D1                        | ──▶         | LRC                   |
+| D2                        | ──▶         | DIN                   |
+| GND                       | ──▶         | GND                   |
+| 3V3                       | ──▶         | V+                    |
+
 ### Technologies Used
 - C++ (Arduino framework)
 - PlatformIO (build/flash)

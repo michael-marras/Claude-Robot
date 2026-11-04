@@ -1,3 +1,8 @@
+'''
+    This file contains the class definition for RobotAgent
+'''
+
+
 import os
 from anthropic import Anthropic
 import base64
@@ -97,9 +102,9 @@ class RobotAgent:
 
         if len(self.conversation) > MAX_CONVERSTAION_SIZE:
             self.conversation.pop(0)
-            
+
         return bot_message
-    
+
     def updateMemory(self) -> str:
         '''
         Update the robotAgent instance's memory string from Robot's Diary
@@ -114,12 +119,13 @@ class RobotAgent:
         if len(memory) > MAX_MEMORY:
             print("Robot's memory is too long")
             memory = ""
-        
+
         inFile.close()
-    
+
         return memory
-                
+
     def getFrameTool(self, block):
+        print("Get Frame Tool Triggered")
         tool_results = []
         tool_results.append({
             "type": "tool_result",
@@ -143,4 +149,3 @@ class RobotAgent:
 
     def updateSenses(self, latest_frame: bytes):
         self.latest_frame = latest_frame
-        print("latest_frame updated")
